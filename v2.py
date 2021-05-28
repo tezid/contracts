@@ -283,21 +283,25 @@ def test():
     scenario += ctrl.registerProof('email').run(sender = user, amount = sp.tez(5))
     scenario += ctrl.registerProof('phone').run(sender = user, amount = sp.tez(5))
 
-    ## Admin can verify an identity
+    ## Admin can verify a proof
     #
     scenario += ctrl.verifyProof(sp.record(address=user.address,prooftype='email')).run(sender = admin)
     scenario.verify(store.data.identities[user.address]['email'].verified == True)
 
-    ## User cannot verify an identity
+    ## User cannot verify a proof
     #
     scenario += ctrl.verifyProof(sp.record(address=user.address, prooftype='phone')).run(sender = user, valid = False)
     scenario.verify(store.data.identities[user.address]['phone'].verified == False)
     
-    ## You cannot get an address verified by attempting to trigger TezIDStore
+    ## You cannot get a proof verified by attempting to trigger TezIDStore
     #
     callback_address = sp.to_address(ctrl.typed.updateProofCallback)
     scenario += store.getProofs(sp.record(address=user.address, callback_address=callback_address)).run(valid = False)
     scenario.verify(store.data.identities[user.address]['phone'].verified == False)
+    
+    ## Admin cannot verif a proof that is not added by a user first
+    #
+    scenario += ctrl.verifyProof(sp.record(address=user.address,prooftype='twitter')).run(sender = admin, valid = False)
     
 @sp.add_test(name = "Remove proof", is_default=runAll)
 def test():
