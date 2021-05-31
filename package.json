@@ -1,0 +1,24 @@
+{
+  "name": "tezid-contract",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "These are the Tezos contracts used by [TezID](https://tezid.net).",
+  "main": "gen_population_data.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tezid/contracts.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tezid/contracts/issues"
+  },
+  "homepage": "https://github.com/tezid/contracts#readme",
+  "dependencies": {
+    "node-fetch": "^2.6.1"
+  }
+}

@@ -4,3 +4,4 @@ build
 test
 bin
 lib
+node_modules
