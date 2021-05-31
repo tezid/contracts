@@ -7,7 +7,6 @@ def test():
     admin = sp.test_account("admin")
 
     """ EDO
-    """
     iids = sp.big_map({
         sp.address("tz1LzNPygNPtwdL9MkZu9BYXAFeNMVqT3Tk3"): {
             "email" : sp.record(
@@ -68,6 +67,45 @@ def test():
                 meta = {}
             )
         }
+    })
+    """
+    
+    """ Florence
+    """
+    iids = sp.big_map({
+        sp.address("tz1LzNPygNPtwdL9MkZu9BYXAFeNMVqT3Tk3"): {
+            "email" : sp.record(
+                register_date = sp.timestamp_from_utc(2021, 3, 29, 10, 23, 11),
+                verified = True,
+                meta = {}
+            ),
+            "phone" : sp.record(
+                register_date = sp.timestamp_from_utc(2021, 3, 29, 10, 26, 11),
+                verified = True,
+                meta = {}
+            )
+        },
+        sp.address("tz1VFf24FHGEYfYaR7f1Fu72ksov45SC1UXz"): {
+            "email" : sp.record(
+                register_date = sp.timestamp_from_utc(2021, 4, 8, 14, 10, 19),
+                verified = False,
+                meta = {}
+            )
+        },
+        sp.address("tz1Wf3Ggf4WaqKGC6KxNDS4rs7ECFRUAjoSH"): {
+            "email" : sp.record(
+                register_date = sp.timestamp_from_utc(2021, 3, 29, 10, 47, 15),
+                verified = True,
+                meta = {}
+            )
+        },
+        sp.address("tz1aW9v8Ka7UCuoGFWjzag9Fv599mLbWVSq9"): {
+            "email" : sp.record(
+                register_date = sp.timestamp_from_utc(2021, 4, 9, 11, 10, 15),
+                verified = False,
+                meta = {}
+            )
+        },
     })
 
     scenario = sp.test_scenario()
