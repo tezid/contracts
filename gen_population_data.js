@@ -10,17 +10,21 @@ const gen = async () => {
   const storage = await res.json()
   const identities = Object.keys(storage.value.identities).map(address => {
     const proofs = Object.keys(storage.value.identities[address]).map(proofType => {
-      return `  "${proofType}": sp.record(
-    register_date = sp.timestamp_from_utc(),
-    verified = False,
-    meta = {}
-  ),`
+      const pt = storage.value.identities[address][proofType]
+      const verified = pt.verified === 'true' ? 'True' : 'False'
+      const rd = new Date(pt.register_date)
+      return `            "${proofType}": sp.record(
+                register_date = sp.timestamp_from_utc(${rd.getUTCFullYear()},${rd.getUTCMonth()+1},${rd.getUTCDate()},${rd.getUTCHours()},${rd.getUTCMinutes()},${rd.getUTCSeconds()}),
+                verified = ${verified},
+                meta = {}
+            ),`
     })
-    return `sp.address("${address}"): {
+    if (proofs == '') return null
+    return `        sp.address("${address}"): {
 ${proofs.join('\n')}
-},`
+        },`
   })
-  console.log(identities.join('\n'))
+  console.log(identities.filter(i => i != null).join('\n'))
 }
 
 gen()
