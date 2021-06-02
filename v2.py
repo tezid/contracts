@@ -44,6 +44,10 @@ class TezIDStore(sp.Contract):
         )
         
     @sp.entry_point
+    def default(self):
+        pass
+        
+    @sp.entry_point
     def setAdmin(self, new_admin):
         sp.if sp.sender != self.data.admin:
             sp.failwith("Only admin can setAdmin")
@@ -103,6 +107,12 @@ class TezIDController(sp.Contract):
             cost = cost,
             updateProofCache = {}
         )
+        
+    ## Default (needed to receive stakiung rewards)
+    #
+    @sp.entry_point
+    def default(self):
+        pass
 
     ## Basic admin functions
     #
@@ -390,19 +400,17 @@ def test():
     store, ctrl = initTests(admin, scenario)
     scenario += ctrl.registerProof('email').run(sender = user, amount = sp.tez(5))
 
-    ## Send some coins with getProofs call
+    ## Send some coins to store
     #
-    # Using receiver.address just to pass some valid address so tx will not fail...
-    #
-    scenario += store.getProofs(sp.record(address=user.address, callback_address=receiver.address)).run(amount = sp.tez(10))
-    scenario.verify_equal(store.balance, sp.tez(10))
-    #scenario.verify_equal(receiver.balance, sp.tez(0))
-    
+    scenario += ctrl.send(sp.record(receiverAddress=store.address, amount=sp.tez(5))).run(sender = admin)
+    scenario.verify_equal(store.balance, sp.tez(5))
+    scenario.verify_equal(ctrl.balance, sp.tez(0))
+
     ## Controller admin can send from store via storeSend
     #
-    scenario += ctrl.storeSend(sp.record(receiverAddress = receiver.address, amount = sp.tez(5))).run(sender = admin)
-    scenario.verify_equal(store.balance, sp.tez(5))
-    #scenario.verify_equal(receiver.balance, sp.tez(5))
+    scenario += ctrl.storeSend(sp.record(receiverAddress = ctrl.address, amount = sp.tez(5))).run(sender = admin)
+    scenario.verify_equal(store.balance, sp.tez(0))
+    scenario.verify_equal(ctrl.balance, sp.tez(5))
 
     ## Non admin cannot storeSend or send on store directly
     #
