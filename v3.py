@@ -87,8 +87,11 @@ class TezIDStore(sp.Contract):
 
     @sp.entry_point
     def getProofs(self, address, callback_address):
+        proofs = sp.local('proofs', sp.map())
+        sp.if self.data.identities.contains(address):
+            proofs.value = self.data.identities[address]
         c = sp.contract(TGetProofsResponsePayload, callback_address).open_some()
-        sp.transfer(sp.record(address=address, proofs=self.data.identities[address]), sp.mutez(0), c)
+        sp.transfer(sp.record(address=address, proofs=proofs.value), sp.mutez(0), c)
 
 ## TezID
 #
@@ -174,17 +177,39 @@ class TezIDController(sp.Contract):
     ## Proof functions
     #
 
+#    @sp.entry_point
+#    def registerProof(self, prooftype):
+#        sp.if sp.amount < self.data.cost:
+#            sp.failwith("Amount too low")
+#        proofdata = sp.record(
+#            register_date = sp.now,
+#            verified = False,
+#            meta = sp.map()
+#        )
+#        c = sp.contract(TSetProofPayload, self.data.idstore, entry_point="setProof").open_some()
+#        sp.transfer(sp.record(address=sp.sender, prooftype=prooftype, proof=proofdata), sp.mutez(0), c)
+
     @sp.entry_point
     def registerProof(self, prooftype):
         sp.if sp.amount < self.data.cost:
             sp.failwith("Amount too low")
-        proofdata = sp.record(
-            register_date = sp.now,
-            verified = False,
-            meta = sp.map()
-        )
-        c = sp.contract(TSetProofPayload, self.data.idstore, entry_point="setProof").open_some()
-        sp.transfer(sp.record(address=sp.sender, prooftype=prooftype, proof=proofdata), sp.mutez(0), c)
+        self.data.updateProofCache[sp.sender] = {
+            "prooftype": prooftype,
+            "operation": "register"
+        }
+        callback_address = sp.self_entry_point_address(entry_point = 'updateProofCallback')
+        c = sp.contract(TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
+        sp.transfer(sp.record(address=sp.sender, callback_address=callback_address), sp.mutez(0), c)
+
+    @sp.entry_point
+    def enableKYC(self):
+        self.data.updateProofCache[sp.sender] = {
+            "prooftype": "gov",
+            "operation": "kyc"
+        }
+        callback_address = sp.self_entry_point_address(entry_point = 'updateProofCallback')
+        c = sp.contract(TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
+        sp.transfer(sp.record(address=sp.sender, callback_address=callback_address), sp.mutez(0), c)
 
     @sp.entry_point
     def updateProofCallback(self, address, proofs):
@@ -197,11 +222,34 @@ class TezIDController(sp.Contract):
         cacheEntry = sp.local('cacheEntry', self.data.updateProofCache[address])
         proofType = cacheEntry.value['prooftype']
         operation = cacheEntry.value['operation']
-        localProof = sp.local('localProof', proofs[proofType])
+
+        supportedOperations = sp.local('supportedOperations', sp.set(["register","verify","kyc","meta"]))
+        localProof = sp.local('localProof', sp.record(
+            register_date = sp.now,
+            verified = False,
+            meta = sp.map()
+        ))        
+        sp.if proofs.contains(proofType):
+            localProof.value =  proofs[proofType]
+
+        # Verifications
+        sp.if supportedOperations.value.contains(operation) == False:
+            sp.failwith("Unsupported updateProof operation")
+
+        sp.if proofs.contains(proofType) == False:
+            sp.if operation != "register":
+                sp.failwith("Cannot update non-existing proof")
+
+        sp.if operation == "register":
+            localProof.value.verified = False
+            localProof.register_date = sp.now
 
         sp.if operation == "verify":
             localProof.value.verified = True
             
+        sp.if operation == "kyc":
+            localProof.value.meta["kyc"] = "true"
+
         sp.if operation == "meta":
             metaKey = cacheEntry.value['key']
             metaValue = cacheEntry.value['value']
@@ -222,7 +270,7 @@ class TezIDController(sp.Contract):
         callback_address = sp.self_entry_point_address(entry_point = 'updateProofCallback')
         c = sp.contract(TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
         sp.transfer(sp.record(address=address, callback_address=callback_address), sp.mutez(0), c)
-        
+
     @sp.entry_point
     def setProofMeta(self, address, prooftype, key, value):
         sp.if sp.sender != self.data.admin:
@@ -254,7 +302,7 @@ class TezIDController(sp.Contract):
 ## Tests
 #
 
-runAll = True
+runAll = False
 
 def initTests(admin, scenario, cost=sp.tez(5)):
     store = TezIDStore(admin.address, sp.big_map())
@@ -529,4 +577,25 @@ def test():
     scenario += ctrl.verifyProof(sp.record(address=user.address, prooftype="twitter")).run(sender = admin)
     scenario.verify_equal(store.data.identities[user.address]['twitter'].verified, True)
     scenario.verify_equal(store.data.identities[user.address]['twitter'].meta['handle'], "@asbjornenge")
+
+@sp.add_test(name = "Enable KYC metadata", is_default=True)
+def test():
+    admin = sp.test_account("admin")
+    user = sp.test_account("User")
+
+    scenario = sp.test_scenario()
+    store, ctrl = initTests(admin, scenario)
+
+    ## Owner of gov proof can set metadata kyc: true
+    #
+    scenario += ctrl.registerProof('gov').run(sender = user, amount = sp.tez(5))
+    scenario += ctrl.enableKYC().run(sender = user)
+    scenario.verify_equal(store.data.identities[user.address]['gov'].meta['kyc'], "true")
+    
+    ## Updating proof should keep metadata
+    #
+    scenario += ctrl.verifyProof(sp.record(address=user.address, prooftype="gov")).run(sender = admin)
+    scenario.verify_equal(store.data.identities[user.address]['gov'].verified, True)
+    scenario.verify_equal(store.data.identities[user.address]['gov'].meta['kyc'], "true")
+
 
