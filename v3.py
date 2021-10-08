@@ -228,7 +228,7 @@ class TezIDController(sp.Contract):
             register_date = sp.now,
             verified = False,
             meta = sp.map()
-        ))        
+        ))
         sp.if proofs.contains(proofType):
             localProof.value =  proofs[proofType]
 
