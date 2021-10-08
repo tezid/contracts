@@ -275,18 +275,18 @@ class TezIDController(sp.Contract):
         sp.transfer(sp.record(address=address, callback_address=callback_address), sp.mutez(0), c)
         
     @sp.entry_point
-    def removeProof(self, prooftype):
-        sp.if sp.amount < self.data.cost:
-            sp.failwith("Amount too low")
+    def removeProof(self, prooftype, address):
+        sp.if sp.sender != self.data.admin:
+            sp.failwith("Only admin can removeProof")
         c = sp.contract(TDelProofPayload, self.data.idstore, entry_point="delProof").open_some()
-        sp.transfer(sp.record(address = sp.sender, prooftype = prooftype), sp.mutez(0), c)
+        sp.transfer(sp.record(address = address, prooftype = prooftype), sp.mutez(0), c)
         
     @sp.entry_point
-    def removeIdentity(self):
-        sp.if sp.amount < self.data.cost:
-            sp.failwith("Amount too low")
+    def removeIdentity(self, address):
+        sp.if sp.sender != self.data.admin:
+            sp.failwith("Only admin can removeIdentity")
         c = sp.contract(sp.TAddress, self.data.idstore, entry_point="removeIdentity").open_some()
-        sp.transfer(sp.sender, sp.mutez(0), c)
+        sp.transfer(address, sp.mutez(0), c)
     
 ## Tests
 #
@@ -362,14 +362,21 @@ def test():
     scenario += ctrl.verifyProof(sp.record(address=user.address,prooftype='email')).run(sender = admin)
     scenario += ctrl.verifyProof(sp.record(address=user.address,prooftype='phone')).run(sender = admin)
 
-    ## A user can remove a proof
+    ## A user cannot remove a proof
     #
+    to_remove = sp.record(prooftype='email', address=user.address)
     scenario.verify(store.data.identities[user.address].contains('email') == True)
     scenario.verify(store.data.identities[user.address].contains('phone') == True)
-    scenario += ctrl.removeProof('email').run(sender = user, amount = sp.tez(5))
+    scenario += ctrl.removeProof(to_remove).run(sender = user, amount = sp.tez(5), valid = False)
+    scenario.verify(store.data.identities[user.address].contains('email') == True)
+    scenario.verify(store.data.identities[user.address].contains('phone') == True)
+
+    ## Admin can remove a proof
+    #
+    scenario += ctrl.removeProof(to_remove).run(sender = admin, amount = sp.tez(5))
     scenario.verify(store.data.identities[user.address].contains('email') == False)
     scenario.verify(store.data.identities[user.address].contains('phone') == True)
-    
+
 @sp.add_test(name = "Remove identity", is_default=runAll)
 def test():
     admin = sp.test_account("admin")
@@ -380,10 +387,15 @@ def test():
     scenario += ctrl.registerProof('email').run(sender = user, amount = sp.tez(5))
     scenario += ctrl.verifyProof(sp.record(address=user.address,prooftype='email')).run(sender = admin)
 
-    ## A user can remove self (and all proofs)
+    ## A user cannot remove self (and all proofs)
     #
     scenario.verify(store.data.identities.contains(user.address))
-    scenario += ctrl.removeIdentity().run(sender = user, amount = sp.tez(5))
+    scenario += ctrl.removeIdentity(user.address).run(sender = user, amount = sp.tez(5), valid = False)
+    scenario.verify(store.data.identities.contains(user.address))
+
+    ## Admin can remove all proofs for an address
+    #
+    scenario += ctrl.removeIdentity(user.address).run(sender = admin, amount = sp.tez(5))
     scenario.verify(store.data.identities.contains(user.address) == False)
 
 @sp.add_test(name = "Set cost", is_default=runAll)
