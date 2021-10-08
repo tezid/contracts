@@ -230,7 +230,7 @@ class TezIDController(sp.Contract):
 
         sp.if operation == "register":
             localProof.value.verified = False
-            localProof.register_date = sp.now
+            localProof.value.register_date = sp.now
             # TODO: Should clear metadata for some prooftypes
 
         sp.if operation == "verify":
@@ -238,6 +238,7 @@ class TezIDController(sp.Contract):
             
         sp.if operation == "kyc":
             localProof.value.meta["kyc"] = "true"
+            localProof.value.verified = False
 
         sp.if operation == "meta":
             metaKey = cacheEntry.value['key']
