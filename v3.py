@@ -177,18 +177,6 @@ class TezIDController(sp.Contract):
     ## Proof functions
     #
 
-#    @sp.entry_point
-#    def registerProof(self, prooftype):
-#        sp.if sp.amount < self.data.cost:
-#            sp.failwith("Amount too low")
-#        proofdata = sp.record(
-#            register_date = sp.now,
-#            verified = False,
-#            meta = sp.map()
-#        )
-#        c = sp.contract(TSetProofPayload, self.data.idstore, entry_point="setProof").open_some()
-#        sp.transfer(sp.record(address=sp.sender, prooftype=prooftype, proof=proofdata), sp.mutez(0), c)
-
     @sp.entry_point
     def registerProof(self, prooftype):
         sp.if sp.amount < self.data.cost:
@@ -243,6 +231,7 @@ class TezIDController(sp.Contract):
         sp.if operation == "register":
             localProof.value.verified = False
             localProof.register_date = sp.now
+            # TODO: Should clear metadata for some prooftypes
 
         sp.if operation == "verify":
             localProof.value.verified = True
@@ -302,7 +291,7 @@ class TezIDController(sp.Contract):
 ## Tests
 #
 
-runAll = False
+runAll = True
 
 def initTests(admin, scenario, cost=sp.tez(5)):
     store = TezIDStore(admin.address, sp.big_map())
@@ -578,7 +567,7 @@ def test():
     scenario.verify_equal(store.data.identities[user.address]['twitter'].verified, True)
     scenario.verify_equal(store.data.identities[user.address]['twitter'].meta['handle'], "@asbjornenge")
 
-@sp.add_test(name = "Enable KYC metadata", is_default=True)
+@sp.add_test(name = "Enable KYC metadata", is_default=runAll)
 def test():
     admin = sp.test_account("admin")
     user = sp.test_account("User")
@@ -592,10 +581,15 @@ def test():
     scenario += ctrl.enableKYC().run(sender = user)
     scenario.verify_equal(store.data.identities[user.address]['gov'].meta['kyc'], "true")
     
-    ## Updating proof should keep metadata
+    ## Verify proof should keep KYC metadata
     #
     scenario += ctrl.verifyProof(sp.record(address=user.address, prooftype="gov")).run(sender = admin)
     scenario.verify_equal(store.data.identities[user.address]['gov'].verified, True)
     scenario.verify_equal(store.data.identities[user.address]['gov'].meta['kyc'], "true")
 
+    ## Renewing proof should keep KYC metadata
+    #
+    scenario += ctrl.registerProof('gov').run(sender = user, amount = sp.tez(5))
+    scenario.verify_equal(store.data.identities[user.address]['gov'].verified, False)
+    scenario.verify_equal(store.data.identities[user.address]['gov'].meta['kyc'], "true")
 
