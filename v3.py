@@ -200,6 +200,20 @@ class TezIDController(sp.Contract):
         sp.transfer(sp.record(address=sp.sender, callback_address=callback_address), sp.mutez(0), c)
 
     @sp.entry_point
+    def enableKYCPlatform(self, platform):
+        supportedPlatforms = sp.set(["kyc_rocket"])
+        sp.if supportedPlatforms.contains(platform) == False:
+            sp.failwith("KYC platform not supported")
+        self.data.updateProofCache[sp.sender] = {
+            "prooftype": "gov",
+            "operation": "kycplatform",
+            "platform": platform
+        }
+        callback_address = sp.self_entry_point_address(entry_point = 'updateProofCallback')
+        c = sp.contract(TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
+        sp.transfer(sp.record(address=sp.sender, callback_address=callback_address), sp.mutez(0), c)
+
+    @sp.entry_point
     def updateProofCallback(self, address, proofs):
         sp.if sp.sender != self.data.idstore:
             sp.failwith("Only idstore can call getProofsCallback")
@@ -211,7 +225,7 @@ class TezIDController(sp.Contract):
         proofType = cacheEntry.value['prooftype']
         operation = cacheEntry.value['operation']
 
-        supportedOperations = sp.local('supportedOperations', sp.set(["register","verify","kyc","meta"]))
+        supportedOperations = sp.set(["register","verify","kyc","kycplatform","meta"])
         localProof = sp.local('localProof', sp.record(
             register_date = sp.now,
             verified = False,
@@ -221,7 +235,7 @@ class TezIDController(sp.Contract):
             localProof.value =  proofs[proofType]
 
         # Verifications
-        sp.if supportedOperations.value.contains(operation) == False:
+        sp.if supportedOperations.contains(operation) == False:
             sp.failwith("Unsupported updateProof operation")
 
         sp.if proofs.contains(proofType) == False:
@@ -239,6 +253,10 @@ class TezIDController(sp.Contract):
         sp.if operation == "kyc":
             localProof.value.meta["kyc"] = "true"
             localProof.value.verified = False
+
+        sp.if operation == "kycplatform":
+            platform = cacheEntry.value['platform']
+            localProof.value.meta[platform] = "true"
 
         sp.if operation == "meta":
             metaKey = cacheEntry.value['key']
@@ -606,3 +624,12 @@ def test():
     scenario.verify_equal(store.data.identities[user.address]['gov'].verified, False)
     scenario.verify_equal(store.data.identities[user.address]['gov'].meta['kyc'], "true")
 
+    ## User can enable supported KYC platforms
+    #
+    scenario += ctrl.enableKYCPlatform('kyc_rocket').run(sender = user)
+    scenario.verify_equal(store.data.identities[user.address]['gov'].meta['kyc_rocket'], "true")
+
+    ## User cannot enable unsupported KYC platforms
+    #
+    scenario += ctrl.enableKYCPlatform('kyc_yolo').run(sender = user, valid = False)
+    scenario += ctrl.enableKYCPlatform('kyc').run(sender = user, valid = False)
