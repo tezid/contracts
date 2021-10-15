@@ -1,8 +1,8 @@
-import * as Types from './ProverTypes';
+import * as Types from './Types';
 
 @Contract
 export class Prover {
-  constructor(public storage: Types.TStorage = { root: '', verified: false }) {}
+  constructor(public storage: Types.TMerkleProverStorage = { root: '', verified: false }) {}
 
   @EntryPoint
   hashTest(a: TBytes, b: TBytes, c: TBytes): void {
