@@ -22,14 +22,14 @@ export class TezIDStore {
     this.storage.admin = new_admin
   }
 
-//  @EntryPoint
-//  setBaker(new_delegate: TAddress): void {
-//    if (Sp.sender != this.storage.admin) {
-//      Sp.failWith("Only admin can setBaker")
-//    }
-//    Sp.setDelegate(new_delegate)
-//  }
-//      
+  @EntryPoint
+  setBaker(new_delegate: TOption<TKey_hash>): void {
+    if (Sp.sender != this.storage.admin) {
+      Sp.failWith("Only admin can setBaker")
+    }
+    Sp.setDelegate(new_delegate)
+  }
+      
 //  @EntryPoint
 //  send(receiverAddress: TAddress, amount: TMutez): void {
 //    if (Sp.sender != this.storage.admin) {
@@ -79,10 +79,35 @@ export class TezIDStore {
 }
 
 Dev.test({ name: 'Store origination' }, () => {
-  const admin = Scenario.testAccount("Admin")
+  ## Set admin
+  #
+
+  const admin1 = Scenario.testAccount("Admin1")
+  const admin2 = Scenario.testAccount("Admin2")
   const store = Scenario.originate(new TezIDStore({
-    admin: admin.address,
+    admin: admin1.address,
     identities: [] 
   }))
-  Scenario.verify(store.storage.admin == admin.address)
+  Scenario.verify(store.storage.admin == admin1.address)
+  Scenario.transfer(store.setAdmin(admin2.address), { sender: admin1.address })
+  Scenario.verify(store.storage.admin == admin2.address)
+  Scenario.transfer(store.setAdmin(admin1.address), { sender: admin2.address })
+  Scenario.verify(store.storage.admin == admin1.address)
+
+  # ADD MISSING TEST
+
+  ## Set baker
+  #
+
+  const baker: TKey_hash = "tz1eWtg7YQb5iLX2HvrHPGbhiCQZ8n98aUh5"
+  const votingPowers = [[baker: 0]]
+
+  Sp.verify(store.baker == Sp.none)
+
+  # Admin can update baker
+
+  Scenario.transfer(store.setBaker(Sp.some(baker)), { sender: admin1.address, votingPowers: votingPowers })
+  Sp.verify(store.baker == baker)
+  
+
 })
