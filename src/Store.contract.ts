@@ -39,17 +39,17 @@ export class TezIDStore {
     Sp.transfer(Sp.unit, amount, contract)
   }
 
-//  @EntryPoint
-//  setProof(address: TAddress, prooftype: TString, proof: Types.TProof): void {
-//    if (Sp.sender != this.storage.admin) {
-//      Sp.failWith("Only admin can setProof")
-//    }
-//    if (!this.storage.identities.contains(address)) {
-//      this.storage.identities.set(address, {})
-//    }
-//    this.storage.identities.get(address).set(prooftype, proof)
-//  }
-//      
+  @EntryPoint
+  setProof(address: TAddress, prooftype: TString, proof: Types.TProof): void {
+    if (Sp.sender != this.storage.admin) {
+      Sp.failWith("Only admin can setProof")
+    }
+    if (!this.storage.identities.contains(address)) {
+      this.storage.identities.set(address, [] as Types.TProofs)
+    }
+    this.storage.identities.get(address).set(prooftype, proof)
+  }
+      
 //  @EntryPoint
 //  delProof(address: TAddress, prooftype: TString): void {
 //    if (Sp.sender != this.storage.admin) {
@@ -119,6 +119,20 @@ Dev.test({ name: 'Store origination' }, () => {
   Scenario.verify(store.balance == 5 as TMutez)
   // User cannot send
   Scenario.transfer(store.send(user2.address, 5 as TMutez), { sender: user2.address, valid: false })
+
+  /*** Set proof ***/
+
+  const proof1: Types.TProof = {
+    meta: [],
+    verified: false,
+    register_date: 1571761674 as TTimestamp
+  }
+  // Admin can set proof
+  Scenario.transfer(store.setProof(user1.address, 'email', proof1), { sender: admin1.address })
+  Scenario.verify(store.storage.identities.get(user1.address).get('email').verified == false)
+  // User cannot set proof
+  Scenario.transfer(store.setProof(user1.address, 'phone', proof1), { sender: user1.address, valid: false })
+
 
 })
 
