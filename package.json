@@ -10,7 +10,7 @@
 		"update": "create-smartpy-project update --path ./ --typescript"
 	},
 	"devDependencies": {
-		"@smartpy/ts-types": "^0.8.0",
+		"@smartpy/ts-types": "^0.8.2",
 		"@typescript-eslint/eslint-plugin": "4.28.1",
 		"@typescript-eslint/parser": "4.28.1",
 		"blakejs": "^1.1.1",
