@@ -104,11 +104,9 @@ Dev.test({ name: 'Store origination' }, () => {
   const baker: TKey_hash = "tz1eWtg7YQb5iLX2HvrHPGbhiCQZ8n98aUh5"
   const votingPowers = [[baker: 0]]
   Scenario.verify(store.baker == Sp.none)
-
   // Admin can update baker
   Scenario.transfer(store.setBaker(Sp.some(baker)), { sender: admin1.address, votingPowers: votingPowers })
   Scenario.verify(store.baker == Sp.some(baker))
-
   // User cannot update baker 
   Scenario.transfer(store.setBaker(Sp.some(baker)), { sender: user1.address, votingPowers: votingPowers, valid: false })
 
@@ -116,8 +114,11 @@ Dev.test({ name: 'Store origination' }, () => {
 
   Scenario.transfer(store.default(), { sender: user1.address, amount: 10 as TMutez })
   Scenario.verify(store.balance == 10 as TMutez)
+  // Admin can send
   Scenario.transfer(store.send(user2.address, 5 as TMutez), { sender: admin1.address })
   Scenario.verify(store.balance == 5 as TMutez)
+  // User cannot send
+  Scenario.transfer(store.send(user2.address, 5 as TMutez), { sender: user2.address, valid: false })
 
 })
 
