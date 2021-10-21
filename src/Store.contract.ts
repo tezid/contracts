@@ -30,15 +30,15 @@ export class TezIDStore {
     Sp.setDelegate(new_delegate)
   }
       
-//  @EntryPoint
-//  send(receiverAddress: TAddress, amount: TMutez): void {
-//    if (Sp.sender != this.storage.admin) {
-//      Sp.failWith("Only admin can send")
-//    }
-//    const contract: TContract<TUnit> = Sp.contract<TUnit>(receiverAddress, "").openSome("Invalid Interface");
-//    Sp.transfer(Sp.unit, amount, contract)
-//  }
-//
+  @EntryPoint
+  send(receiverAddress: TAddress, amount: TMutez): void {
+    if (Sp.sender != this.storage.admin) {
+      Sp.failWith("Only admin can send")
+    }
+    const contract: TContract<TUnit> = Sp.contract<TUnit>(receiverAddress, "").openSome("Invalid receiver");
+    Sp.transfer(Sp.unit, amount, contract)
+  }
+
 //  @EntryPoint
 //  setProof(address: TAddress, prooftype: TString, proof: Types.TProof): void {
 //    if (Sp.sender != this.storage.admin) {
@@ -79,35 +79,43 @@ export class TezIDStore {
 }
 
 Dev.test({ name: 'Store origination' }, () => {
-  ## Set admin
-  #
+
+  /*** Init ***/
 
   const admin1 = Scenario.testAccount("Admin1")
   const admin2 = Scenario.testAccount("Admin2")
-  const store = Scenario.originate(new TezIDStore({
+  const user1  = Scenario.testAccount("User1")
+  const user2  = Scenario.testAccount("User2")
+  const store  = Scenario.originate(new TezIDStore({
     admin: admin1.address,
     identities: [] 
   }))
+
+  /*** Set admin ***/
+
   Scenario.verify(store.storage.admin == admin1.address)
   Scenario.transfer(store.setAdmin(admin2.address), { sender: admin1.address })
   Scenario.verify(store.storage.admin == admin2.address)
   Scenario.transfer(store.setAdmin(admin1.address), { sender: admin2.address })
   Scenario.verify(store.storage.admin == admin1.address)
 
-  # ADD MISSING TEST
-
-  ## Set baker
-  #
+  /*** Set baker ***/
 
   const baker: TKey_hash = "tz1eWtg7YQb5iLX2HvrHPGbhiCQZ8n98aUh5"
   const votingPowers = [[baker: 0]]
-
   Sp.verify(store.baker == Sp.none)
 
-  # Admin can update baker
-
+  // Admin can update baker
   Scenario.transfer(store.setBaker(Sp.some(baker)), { sender: admin1.address, votingPowers: votingPowers })
   Sp.verify(store.baker == baker)
-  
+
+  // User cannot update baker 
+  Scenario.transfer(store.setBaker(Sp.some(baker)), { sender: user1.address, votingPowers: votingPowers, valid: false })
+
+  /*** Transfer funds ***/
+
+  Sp.verify(store.balance == user1.address)
+  //Scenario.transfer(store.default(), { sender: user1.address, amount: 10 as TMutez })
+  //Sp.verify(store.balance == 500 as TMutez)
 
 })
