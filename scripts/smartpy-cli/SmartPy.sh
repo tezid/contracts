@@ -2,7 +2,7 @@
 
 set -e
 
-VERSION="0.8.1"
+VERSION="0.8.3-1"
 export FORCE_COLOR=1
 
 export smartml_app_name=SmartPy.sh
