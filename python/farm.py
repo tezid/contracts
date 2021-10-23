@@ -42,7 +42,13 @@ def buildFarmDetails(amount, rpb):
     )
 
 
-def buildTokenDetails(_stakeToken, _stakeId, _rewardToken, _rewardId):
+def buildTokenDetails(_stakeToken, _stakeId, _stakeDecimals, _rewardToken, _rewardId, _rewardDecimals):
+    return sp.record(
+        stake=sp.record(address=_stakeToken, _id=_stakeId, decimals = _stakeDecimals),
+        reward=sp.record(address=_rewardToken, _id=_rewardId, decimals = _rewardDecimals),
+    )
+
+def buildTokenDetailsV1(_stakeToken, _stakeId, _rewardToken, _rewardId):
     return sp.record(
         stake=sp.record(address=_stakeToken, _id=_stakeId),
         reward=sp.record(address=_rewardToken, _id=_rewardId),
@@ -55,8 +61,10 @@ class Staking(sp.Contract):
         _admin,
         _stakeToken,
         _stakeId,
+        _stakeDecimals,
         _rewardToken,
         _rewardId,
+        _rewardDecimals,
         _rewardAmount,
         _rewardPerBlock,
     ):
@@ -64,7 +72,7 @@ class Staking(sp.Contract):
             admin=_admin,
             balances=_balanceMap,
             details=buildFarmDetails(_rewardAmount, _rewardPerBlock),
-            tokens=buildTokenDetails(_stakeToken, _stakeId, _rewardToken, _rewardId),
+            tokens=buildTokenDetails(_stakeToken, _stakeId, _stakeDecimals, _rewardToken, _rewardId, _rewardDecimals),
             paused=False,
             started=False
         )
@@ -76,8 +84,9 @@ class Staking(sp.Contract):
         self.checkPaused()
         self.checkAdmin()
 
-        sp.verify(self.data.details.rewards > 0, Error.ZeroAmount)
-
+        sp.verify(self.data.details.rewards > 0, Error.ZeroAmount) 
+        rewardsToTransfer = self.data.details.rewards * self.data.tokens.reward.decimals
+        
         self.TransferTokens(sp.sender, sp.self_address,
                             self.data.details.rewards,
                             self.data.tokens.stake.address, 
@@ -230,13 +239,92 @@ def test():
     scenario = sp.test_scenario()
     scenario.h1("Staking contract PoC")
 
-    staking = Staking(sp.address("tz1-admin"),
-        sp.address("KT1-stake-token"),
+    admin = sp.address("tz1-admin")
+    u1 = sp.address("tz1-user-1")
+    u2 = sp.address("tz1-user-2")
+
+    testToken = TestToken(FA2.FA2_config(single_asset=True), admin = admin, 
+        metadata = sp.big_map(
+            {
+            "": sp.utils.bytes_of_string("tezos-storage:content"),
+            "content": sp.utils.bytes_of_string("""{"name" : "TestToken"}""")
+                
+            }
+        )
+    )
+
+    scenario += testToken
+
+    tokenId = 0
+
+    testToken.mint(
+        address = admin,
+        amount = 120_000 * DECIMALS,
+        metadata = TestToken.make_metadata(
+            decimals = 9,
+            name = "TestToken",
+            symbol = "TST"
+        ),
+        token_id = tokenId
+    ).run(sender = admin)
+
+    testToken.transfer([
+        testToken.batch_transfer.item(from_ = admin,
+            txs = [
+                    sp.record(to_ = u1,
+                                      amount = 10_000 * DECIMALS,
+                                      token_id = 0),
+                    sp.record(to_ = u2,
+                                      amount = 10_000 * DECIMALS,
+                                      token_id = 0)
+                                    
+
+            ]
+        )
+    ]).run(sender = admin)
+
+    """
+    _admin,
+    _stakeToken,
+    _stakeId,
+    _stakeDecimals,
+    _rewardToken,
+    _rewardId,
+    _rewardDecimals,
+    _rewardAmount,
+    _rewardPerBlock,
+    """
+    staking = Staking(admin,
+        testToken.address,
         sp.nat(0),
-        sp.address("KT1-reward-token"),
+        sp.nat(10 ** 9),
+        testToken.address,
         sp.nat(0),
-        sp.nat(100000),
+        sp.nat(10 ** 9),
+        sp.nat(100000 * DECIMALS),
         sp.nat(100))
 
     scenario += staking
+
+    testToken.update_operators([
+            sp.variant("add_operator",
+                testToken.operator_param.make(
+                    owner = admin,
+                    operator = staking.address,
+                    token_id = 0)),
+
+            sp.variant("add_operator",
+                testToken.operator_param.make(
+                    owner = u1,
+                    operator = staking.address,
+                    token_id = 0)),
+
+            sp.variant("add_operator",
+                testToken.operator_param.make(
+                    owner = u2,
+                    operator = staking.address,
+                    token_id = 0))
+    ]).run(sender = admin)
+
+    staking.startPool().run(sender = admin)
 
