@@ -102,12 +102,14 @@ class TezIDController(sp.Contract):
             admin = sp.TAddress,
             idstore = sp.TAddress,
             cost = sp.TMutez,
+            kycPlatforms = sp.TSet(sp.TString),
             updateProofCache = sp.TMap(sp.TAddress, sp.TMap(sp.TString, sp.TString))
         ))
         self.init(
             admin = admin, 
             idstore = idstore,
             cost = cost,
+            kycPlatforms = sp.set(),
             updateProofCache = {}
         )
         
@@ -149,6 +151,12 @@ class TezIDController(sp.Contract):
         sp.if sp.sender != self.data.admin:
             sp.failwith("Only admin can setBaker")
         sp.set_delegate(new_delegate)
+
+    @sp.entry_point
+    def setKycPlatforms(self, kycPlatforms):
+        sp.if sp.sender != self.data.admin:
+            sp.failwith("Only admin can setKycPlatforms")
+        self.data.kycPlatforms = kycPlatforms
 
     ## Store admin functions
     #
@@ -201,8 +209,7 @@ class TezIDController(sp.Contract):
 
     @sp.entry_point
     def enableKYCPlatform(self, platform):
-        supportedPlatforms = sp.set(["kyc_rocket"])
-        sp.if supportedPlatforms.contains(platform) == False:
+        sp.if self.data.kycPlatforms.contains(platform) == False:
             sp.failwith("KYC platform not supported")
         self.data.updateProofCache[sp.sender] = {
             "prooftype": "gov",
@@ -624,10 +631,15 @@ def test():
     scenario.verify_equal(store.data.identities[user.address]['gov'].verified, False)
     scenario.verify_equal(store.data.identities[user.address]['gov'].meta['kyc'], "true")
 
+    ## Admin can set supported KYC platforms
+    #
+    scenario += ctrl.setKycPlatforms({ 'kyc_crunchy', 'kyc_yaynay' }).run(sender = admin)
+    scenario.verify(ctrl.data.kycPlatforms.contains('kyc_crunchy'))
+
     ## User can enable supported KYC platforms
     #
-    scenario += ctrl.enableKYCPlatform('kyc_rocket').run(sender = user)
-    scenario.verify_equal(store.data.identities[user.address]['gov'].meta['kyc_rocket'], "true")
+    scenario += ctrl.enableKYCPlatform('kyc_crunchy').run(sender = user)
+    scenario.verify_equal(store.data.identities[user.address]['gov'].meta['kyc_crunchy'], "true")
 
     ## User cannot enable unsupported KYC platforms
     #
