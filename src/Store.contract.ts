@@ -50,14 +50,14 @@ export class TezIDStore {
     this.storage.identities.get(address).set(prooftype, proof)
   }
       
-//  @EntryPoint
-//  delProof(address: TAddress, prooftype: TString): void {
-//    if (Sp.sender != this.storage.admin) {
-//      Sp.failWith("Only admin can delProof")
-//    }
-//    this.storage.identities.get(address).remove(prooftype)
-//  }
-//      
+  @EntryPoint
+  delProof(address: TAddress, prooftype: TString): void {
+    if (Sp.sender != this.storage.admin) {
+      Sp.failWith("Only admin can delProof")
+    }
+    this.storage.identities.get(address).remove(prooftype)
+  }
+      
 //  @EntryPoint
 //  removeIdentity(address: TAddress): void {
 //    if (Sp.sender != this.storage.admin) {
@@ -133,6 +133,10 @@ Dev.test({ name: 'Store origination' }, () => {
   // User cannot set proof
   Scenario.transfer(store.setProof(user1.address, 'phone', proof1), { sender: user1.address, valid: false })
 
+  /*** Del proof ***/
+
+  Scenario.transfer(store.delProof(user1.address, 'email'), { sender: admin1.address })
+  Scenario.verify(store.storage.identities.get(user1.address).hasKey('email') == false)
 
 })
 
