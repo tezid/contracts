@@ -58,27 +58,27 @@ export class TezIDStore {
     this.storage.identities.get(address).remove(prooftype)
   }
       
-//  @EntryPoint
-//  removeIdentity(address: TAddress): void {
-//    if (Sp.sender != this.storage.admin) {
-//      Sp.failWith("Only admin can removeIdentity")
-//    }
-//    this.storage.identities.remove(address)
-//  }
-//
-//  @EntryPoint
-//  getProofs(address: TAddress, callback_address: TContract): void {
-//    let proofs = {}
-//    if (this.storage.identities.contains(address)) {
-//      proofs = this.storage.identities.get(address)
-//    }
-//    const res: Types.TGetProofsResponsePayload = { address = address, proofs = proofs }
-//    const contract: TContract<Types.TGetProofsResponsePayload> = Sp.contract<Types.TGetProofsResponsePayload>(callback_address).openSome("Invalid Interface");
-//    Sp.transfer(res, 0, contract)
-//  }
+  @EntryPoint
+  removeIdentity(address: TAddress): void {
+    if (Sp.sender != this.storage.admin) {
+      Sp.failWith("Only admin can removeIdentity")
+    }
+    this.storage.identities.remove(address)
+  }
+
+  @EntryPoint
+  getProofs(address: TAddress, callback_address: TContract): void {
+    let proofs = {}
+    if (this.storage.identities.contains(address)) {
+      proofs = this.storage.identities.get(address)
+    }
+    const res: Types.TGetProofsResponsePayload = { address = address, proofs = proofs }
+    const contract: TContract<Types.TGetProofsResponsePayload> = Sp.contract<Types.TGetProofsResponsePayload>(callback_address).openSome("Invalid Interface");
+    Sp.transfer(res, 0 as TMutez, contract)
+  }
 }
 
-Dev.test({ name: 'Store origination' }, () => {
+Dev.test({ name: 'Store' }, () => {
 
   /*** Init ***/
 
@@ -135,8 +135,15 @@ Dev.test({ name: 'Store origination' }, () => {
 
   /*** Del proof ***/
 
+  Scenario.transfer(store.delProof(user1.address, 'email'), { sender: user1.address, valid: false })
   Scenario.transfer(store.delProof(user1.address, 'email'), { sender: admin1.address })
   Scenario.verify(store.storage.identities.get(user1.address).hasKey('email') == false)
+
+  /*** Remove identity ***/
+
+  Scenario.transfer(store.removeIdentity(user1.address), { sender: user1.address, valid: false })
+  Scenario.transfer(store.removeIdentity(user1.address), { sender: admin1.address })
+  Scenario.verify(store.storage.identities.hasKey(user1.address) == false)
 
 })
 
