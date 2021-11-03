@@ -232,7 +232,7 @@ class TezIDController(sp.Contract):
         proofType = cacheEntry.value['prooftype']
         operation = cacheEntry.value['operation']
 
-        supportedOperations = sp.set(["register","verify","kyc","kycplatform","meta"])
+        supportedOperations = sp.set(["register","verify","kyc","kycplatform","meta","rename"])
         localProof = sp.local('localProof', sp.record(
             register_date = sp.now,
             verified = False,
@@ -270,9 +270,14 @@ class TezIDController(sp.Contract):
             metaValue = cacheEntry.value['value']
             localProof.value.meta[metaKey] = metaValue
 
+        localProofType = sp.local('localProofType', proofType)
+
+        sp.if operation == "rename":
+            localProofType.value = cacheEntry.value['newtype']
+
         del self.data.updateProofCache[address]
         c = sp.contract(TSetProofPayload, self.data.idstore, entry_point="setProof").open_some()
-        sp.transfer(sp.record(address=address, prooftype=proofType, proof=localProof.value), sp.mutez(0), c)
+        sp.transfer(sp.record(address=address, prooftype=localProofType.value, proof=localProof.value), sp.mutez(0), c)
 
     @sp.entry_point
     def verifyProof(self, address, prooftype):
@@ -295,6 +300,19 @@ class TezIDController(sp.Contract):
             "operation": "meta",
             "key": key,
             "value": value
+        }
+        callback_address = sp.self_entry_point_address(entry_point = 'updateProofCallback')
+        c = sp.contract(TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
+        sp.transfer(sp.record(address=address, callback_address=callback_address), sp.mutez(0), c)
+
+    @sp.entry_point
+    def renameProof(self, address, oldProofType, newProofType):
+        sp.if sp.sender != self.data.admin:
+            sp.failwith("Only admin can renameProof")
+        self.data.updateProofCache[address] = {
+            "prooftype": oldProofType,
+            "newtype": newProofType,
+            "operation": "rename"
         }
         callback_address = sp.self_entry_point_address(entry_point = 'updateProofCallback')
         c = sp.contract(TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
@@ -645,3 +663,26 @@ def test():
     #
     scenario += ctrl.enableKYCPlatform('kyc_yolo').run(sender = user, valid = False)
     scenario += ctrl.enableKYCPlatform('kyc').run(sender = user, valid = False)
+
+@sp.add_test(name = "Rename proof", is_default=runAll)
+def test():
+    admin = sp.test_account("admin")
+    user = sp.test_account("User")
+
+    scenario = sp.test_scenario()
+    store, ctrl = initTests(admin, scenario)
+
+    ## Admin can rename a prooftype
+    #
+    scenario += ctrl.registerProof('passport').run(sender = user, amount = sp.tez(5))
+    scenario += ctrl.verifyProof(sp.record(address=user.address, prooftype="passport")).run(sender = admin)
+    scenario.verify(store.data.identities[user.address].contains('passport'))
+    scenario += ctrl.renameProof(sp.record(address=user.address, oldProofType='passport', newProofType='gov')).run(sender = admin)
+    scenario.verify(store.data.identities[user.address].contains('gov'))
+    scenario.verify(store.data.identities[user.address]['gov'].verified == True)
+    scenario += ctrl.removeProof(sp.record(address=user.address, prooftype='passport')).run(sender = admin)
+    scenario.verify_equal(store.data.identities[user.address].contains('passport'), False)
+
+    ## User cannot rename a prooftype
+    #
+    scenario += ctrl.renameProof(sp.record(address=user.address, oldProofType='gov', newProofType='passport')).run(sender = user, valid=False)
