@@ -61,6 +61,7 @@ class IDZStaking(sp.Contract):
                     userRewardPerTokenPaid = sp.TNat
                 )
             ),
+            started = False
         )
             
     @sp.entry_point
@@ -69,6 +70,7 @@ class IDZStaking(sp.Contract):
 
     @sp.entry_point
     def startPool(self):
+        sp.verify(self.data.started == False, "POOL_STARTED")
         self.checkAdmin()
         self.checkPaused()
         sp.verify(self.data.details.tokensToReward > 0, Error.ZeroAmount)
@@ -79,6 +81,7 @@ class IDZStaking(sp.Contract):
 
         self.updateRewardPerBlock()
         self.updateRewards(sp.self_address)
+        self.data.started = True
 
     @sp.entry_point
     def refillPool(self, amount, start, finish):
@@ -228,7 +231,7 @@ def test():
     scenario = sp.test_scenario()
     scenario.h1("Staking contract PoC")
 
-    admin = sp.address("tz1-admin")
+    admin = sp.address("tz1L8hBVpams2fWFC9kS1sPVxfGY6Hmg5TQ8")
     a1 = sp.address("tz1-staker-1")
     a2 = sp.address("tz1-staker-2")
 
@@ -242,7 +245,7 @@ def test():
         )
     )
 
-    tokenDecimals = 10 ** 9
+    tokenDecimals = 10 ** 8
     tokenId = 0
 
     scenario += token
@@ -276,43 +279,43 @@ def test():
     ]).run(sender = admin)
 
     
-    staking = IDZStaking(admin, token.address, tokenId, tokenDecimals, token.address, tokenId, tokenDecimals, 1000 * tokenDecimals, 0, 1000)
+    staking = IDZStaking(admin, sp.address("KT19HMxHc1SZ7C3FK4oA8c1jptLrcEuhxqbu"), tokenId, tokenDecimals, sp.address("KT19HMxHc1SZ7C3FK4oA8c1jptLrcEuhxqbu"), tokenId, tokenDecimals, 2000 * tokenDecimals, 672560, 674560)
     scenario += staking
 
-    token.update_operators([
-            sp.variant("add_operator",
-                token.operator_param.make(
-                    owner = admin,
-                    operator = staking.address,
-                    token_id = tokenId)),
-            sp.variant("add_operator",
-                token.operator_param.make(
-                    owner = a1,
-                    operator = staking.address,
-                    token_id = tokenId)),
-            sp.variant("add_operator",
-                token.operator_param.make(
-                    owner = a2,
-                    operator = staking.address,
-                    token_id = tokenId))
-    ]).run(sender = admin)
+    # token.update_operators([
+    #         sp.variant("add_operator",
+    #             token.operator_param.make(
+    #                 owner = admin,
+    #                 operator = staking.address,
+    #                 token_id = tokenId)),
+    #         sp.variant("add_operator",
+    #             token.operator_param.make(
+    #                 owner = a1,
+    #                 operator = staking.address,
+    #                 token_id = tokenId)),
+    #         sp.variant("add_operator",
+    #             token.operator_param.make(
+    #                 owner = a2,
+    #                 operator = staking.address,
+    #                 token_id = tokenId))
+    # ]).run(sender = admin)
 
-    staking.startPool().run(sender = admin)
+    # staking.startPool().run(sender = admin)
 
-    staking.stake(100 * tokenDecimals).run(sender = a1, level = 0)
-    staking.stake(300 * tokenDecimals).run(sender = a2, level = 0)
+    # staking.stake(100 * tokenDecimals).run(sender = a1, level = 0)
+    # staking.stake(300 * tokenDecimals).run(sender = a2, level = 0)
 
-    staking.claim().run(sender = a1, level = 400)
-    staking.claim().run(sender = a2, level = 800)
-
-
-    staking.refillPool(amount = sp.nat(1000 * tokenDecimals), start = sp.nat(1100), finish = sp.nat(2100)).run(sender = admin, level = 1100)
-    staking.updateRewardsFor(a1).run(sender = admin)
-    staking.updateRewardsFor(a2).run(sender = admin)
+    # staking.claim().run(sender = a1, level = 400)
+    # staking.claim().run(sender = a2, level = 800)
 
 
+    # staking.refillPool(amount = sp.nat(1000 * tokenDecimals), start = sp.nat(1100), finish = sp.nat(2100)).run(sender = admin, level = 1100)
+    # staking.updateRewardsFor(a1).run(sender = admin)
+    # staking.updateRewardsFor(a2).run(sender = admin)
 
-    staking.claim().run(sender = a1, level = 1800)
-    staking.claim().run(sender = a1, level = 2400)
 
-    staking.claim().run(sender = a2, level = 2400)
+
+    # staking.claim().run(sender = a1, level = 1800)
+    # staking.claim().run(sender = a1, level = 2400)
+
+    # staking.claim().run(sender = a2, level = 2400)
