@@ -6,4 +6,5 @@ bin
 lib
 node_modules
 secrets
+output
 pyvenv.cfg

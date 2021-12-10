@@ -14,7 +14,7 @@ source bin/activate
 ## Test
 
 ```
-spy kind all tests/tezid.py output -html
+spy kind all tests/tezid.py output --html
 ```
 
 ## Originate
