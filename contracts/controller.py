@@ -229,29 +229,14 @@ class TezIDController(sp.Contract):
     sp.transfer(sp.record(address=address, prooftype=prooftype, proof=proof), sp.mutez(0), c)
 
   @sp.entry_point
-  def renameProof(self, address, oldProofType, newProofType):
-      sp.if sp.sender != self.data.admin:
-          sp.failwith("Only admin can renameProof")
-      self.data.updateProofCache[address] = {
-          "prooftype": oldProofType,
-          "newtype": newProofType,
-          "operation": "rename"
-      }
-      callback_address = sp.self_entry_point_address(entry_point = 'updateProofCallback')
-      c = sp.contract(Types.TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
-      sp.transfer(sp.record(address=address, callback_address=callback_address), sp.mutez(0), c)
-      
-  @sp.entry_point
   def removeProof(self, prooftype, address):
-      sp.if sp.sender != self.data.admin:
-          sp.failwith("Only admin can removeProof")
-      c = sp.contract(Types.TDelProofPayload, self.data.idstore, entry_point="delProof").open_some()
-      sp.transfer(sp.record(address = address, prooftype = prooftype), sp.mutez(0), c)
+    self.checkAdmin()
+    c = sp.contract(Types.TDelProofPayload, self.data.idstore, entry_point="delProof").open_some()
+    sp.transfer(sp.record(address = address, prooftype = prooftype), sp.mutez(0), c)
       
   @sp.entry_point
   def removeIdentity(self, address):
-      sp.if sp.sender != self.data.admin:
-          sp.failwith("Only admin can removeIdentity")
-      c = sp.contract(sp.TAddress, self.data.idstore, entry_point="removeIdentity").open_some()
-      sp.transfer(address, sp.mutez(0), c)
+    self.checkAdmin()
+    c = sp.contract(sp.TAddress, self.data.idstore, entry_point="removeIdentity").open_some()
+    sp.transfer(address, sp.mutez(0), c)
     

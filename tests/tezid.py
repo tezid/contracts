@@ -355,25 +355,3 @@ def test():
   scenario += ctrl.enableKYCPlatform('kyc_yolo').run(sender = user, valid = False)
   scenario += ctrl.enableKYCPlatform('kyc').run(sender = user, valid = False)
 
-@sp.add_target(name = "Rename proof", kind=allKind)
-def test():
-  admin = sp.test_account("admin")
-  user = sp.test_account("User")
-
-  scenario = sp.test_scenario()
-  store, ctrl = init(admin, scenario)
-
-  ## Admin can rename a prooftype
-  #
-  scenario += ctrl.registerProof('passport').run(sender = user, amount = sp.tez(5))
-  scenario += ctrl.verifyProof(sp.record(address=user.address, prooftype="passport")).run(sender = admin)
-  scenario.verify(store.data.identities[user.address].contains('passport'))
-  scenario += ctrl.renameProof(sp.record(address=user.address, oldProofType='passport', newProofType='gov')).run(sender = admin)
-  scenario.verify(store.data.identities[user.address].contains('gov'))
-  scenario.verify(store.data.identities[user.address]['gov'].verified == True)
-  scenario += ctrl.removeProof(sp.record(address=user.address, prooftype='passport')).run(sender = admin)
-  scenario.verify_equal(store.data.identities[user.address].contains('passport'), False)
-
-  ## User cannot rename a prooftype
-  #
-  scenario += ctrl.renameProof(sp.record(address=user.address, oldProofType='gov', newProofType='passport')).run(sender = user, valid=False)
