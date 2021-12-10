@@ -36,6 +36,12 @@ class TezIDController(sp.Contract):
 
   def checkAdmin(self):
     sp.verify(sp.sender == self.data.admin, 'Only admin can call this entrypoint')    
+
+  def checkProofExistence(self, proofs, proofType):
+    sp.verify(proofs.contains(proofType), 'Missing required proof for this entrypoint')
+
+  def checkSupportedKycPlatform(self, platform):
+    sp.verify(self.data.kycPlatforms.contains(platform), 'KYC platform not supported')
         
   ## Default 
   #
@@ -111,42 +117,37 @@ class TezIDController(sp.Contract):
       localProof.value =  proofs[proofType]
     return localProof.value
 
+
   @sp.entry_point
   def registerProof(self, proofType):
     sp.if sp.amount < self.data.cost:
       sp.failwith('Amount too low')
-
     proofs = sp.view('getProofsForAddress', self.data.idstore, sp.sender, t = Types.TProofs).open_some('Invalid view')
     proof = self.getOrCreateProof(proofs, proofType)
-
     proof.verified = False
     proof.register_date = sp.now
-
     c = sp.contract(Types.TSetProofPayload, self.data.idstore, entry_point="setProof").open_some()
     sp.transfer(sp.record(address=sp.sender, prooftype=proofType, proof=proof), sp.mutez(0), c)
 
   @sp.entry_point
   def enableKYC(self):
-      self.data.updateProofCache[sp.sender] = {
-          "prooftype": "gov",
-          "operation": "kyc"
-      }
-      callback_address = sp.self_entry_point_address(entry_point = 'updateProofCallback')
-      c = sp.contract(Types.TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
-      sp.transfer(sp.record(address=sp.sender, callback_address=callback_address), sp.mutez(0), c)
+    proofs = sp.view('getProofsForAddress', self.data.idstore, sp.sender, t = Types.TProofs).open_some('Invalid view')
+    self.checkProofExistence(proofs, 'gov')
+    proof = self.getOrCreateProof(proofs, 'gov') 
+    proof.meta['kyc'] = 'true'
+    proof.verified = False
+    c = sp.contract(Types.TSetProofPayload, self.data.idstore, entry_point="setProof").open_some()
+    sp.transfer(sp.record(address=sp.sender, prooftype='gov', proof=proof), sp.mutez(0), c)
 
   @sp.entry_point
   def enableKYCPlatform(self, platform):
-      sp.if self.data.kycPlatforms.contains(platform) == False:
-          sp.failwith("KYC platform not supported")
-      self.data.updateProofCache[sp.sender] = {
-          "prooftype": "gov",
-          "operation": "kycplatform",
-          "platform": platform
-      }
-      callback_address = sp.self_entry_point_address(entry_point = 'updateProofCallback')
-      c = sp.contract(Types.TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
-      sp.transfer(sp.record(address=sp.sender, callback_address=callback_address), sp.mutez(0), c)
+    self.checkSupportedKycPlatform(platform)
+    proofs = sp.view('getProofsForAddress', self.data.idstore, sp.sender, t = Types.TProofs).open_some('Invalid view')
+    self.checkProofExistence(proofs, 'gov')
+    proof = self.getOrCreateProof(proofs, 'gov') 
+    proof.meta[platform] = "true"
+    c = sp.contract(Types.TSetProofPayload, self.data.idstore, entry_point="setProof").open_some()
+    sp.transfer(sp.record(address=sp.sender, prooftype='gov', proof=proof), sp.mutez(0), c)
 
   @sp.entry_point
   def updateProofCallback(self, address, proofs):
@@ -209,15 +210,13 @@ class TezIDController(sp.Contract):
 
   @sp.entry_point
   def verifyProof(self, address, prooftype):
-      sp.if sp.sender != self.data.admin:
-          sp.failwith("Only admin can verifyProof")
-      self.data.updateProofCache[address] = {
-          "prooftype": prooftype,
-          "operation": "verify"
-      }
-      callback_address = sp.self_entry_point_address(entry_point = 'updateProofCallback')
-      c = sp.contract(Types.TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
-      sp.transfer(sp.record(address=address, callback_address=callback_address), sp.mutez(0), c)
+    self.checkAdmin()
+    proofs = sp.view('getProofsForAddress', self.data.idstore, address, t = Types.TProofs).open_some('Invalid view')
+    self.checkProofExistence(proofs, prooftype)
+    proof = self.getOrCreateProof(proofs, prooftype)
+    proof.verified = True
+    c = sp.contract(Types.TSetProofPayload, self.data.idstore, entry_point="setProof").open_some()
+    sp.transfer(sp.record(address=address, prooftype=prooftype, proof=proof), sp.mutez(0), c)
 
   @sp.entry_point
   def setProofMeta(self, address, prooftype, key, value):
