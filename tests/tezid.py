@@ -75,12 +75,6 @@ def test():
   scenario += ctrl.verifyProof(sp.record(address=user.address, prooftype='phone')).run(sender = user, valid = False)
   scenario.verify(store.data.identities[user.address]['phone'].verified == False)
   
-  ## You cannot get a proof verified by attempting to trigger TezIDStore
-  #
-  callback_address = sp.to_address(ctrl.typed.updateProofCallback)
-  scenario += store.getProofs(sp.record(address=user.address, callback_address=callback_address)).run(valid = False)
-  scenario.verify(store.data.identities[user.address]['phone'].verified == False)
-  
   ## Admin cannot verif a proof that is not added by a user first
   #
   scenario += ctrl.verifyProof(sp.record(address=user.address,prooftype='twitter')).run(sender = admin, valid = False)

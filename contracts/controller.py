@@ -4,11 +4,6 @@ import smartpy as sp
 cwd = os.getcwd()
 Types = sp.io.import_script_from_url("file://%s/contracts/types.py" % cwd)
 
-# TODO:
-# * checkAdmin function
-# * use views
-#
-
 ## TezID Controller
 #
 
@@ -42,7 +37,17 @@ class TezIDController(sp.Contract):
 
   def checkSupportedKycPlatform(self, platform):
     sp.verify(self.data.kycPlatforms.contains(platform), 'KYC platform not supported')
-        
+
+  def getOrCreateProof(self, proofs, proofType):
+    localProof = sp.local('localProof', sp.record(
+      register_date = sp.now,
+      verified = False,
+      meta = sp.map()
+    ))
+    sp.if proofs.contains(proofType):
+      localProof.value =  proofs[proofType]
+    return localProof.value
+
   ## Default 
   #
 
@@ -107,17 +112,6 @@ class TezIDController(sp.Contract):
   ## Proof functions
   #
 
-  def getOrCreateProof(self, proofs, proofType):
-    localProof = sp.local('localProof', sp.record(
-      register_date = sp.now,
-      verified = False,
-      meta = sp.map()
-    ))
-    sp.if proofs.contains(proofType):
-      localProof.value =  proofs[proofType]
-    return localProof.value
-
-
   @sp.entry_point
   def registerProof(self, proofType):
     sp.if sp.amount < self.data.cost:
@@ -148,65 +142,6 @@ class TezIDController(sp.Contract):
     proof.meta[platform] = "true"
     c = sp.contract(Types.TSetProofPayload, self.data.idstore, entry_point="setProof").open_some()
     sp.transfer(sp.record(address=sp.sender, prooftype='gov', proof=proof), sp.mutez(0), c)
-
-  @sp.entry_point
-  def updateProofCallback(self, address, proofs):
-      sp.if sp.sender != self.data.idstore:
-          sp.failwith("Only idstore can call getProofsCallback")
-      sp.if self.data.updateProofCache.contains(address) == False:
-          sp.failwith("No cache entry for address")
-      sp.set_type(address, sp.TAddress)
-      sp.set_type(proofs, Types.TProofs)
-      cacheEntry = sp.local('cacheEntry', self.data.updateProofCache[address])
-      proofType = cacheEntry.value['prooftype']
-      operation = cacheEntry.value['operation']
-
-      supportedOperations = sp.set(["register","verify","kyc","kycplatform","meta","rename"])
-      localProof = sp.local('localProof', sp.record(
-          register_date = sp.now,
-          verified = False,
-          meta = sp.map()
-      ))
-      sp.if proofs.contains(proofType):
-          localProof.value =  proofs[proofType]
-
-      # Verifications
-      sp.if supportedOperations.contains(operation) == False:
-          sp.failwith("Unsupported updateProof operation")
-
-      sp.if proofs.contains(proofType) == False:
-          sp.if operation != "register":
-              sp.failwith("Cannot update non-existing proof")
-
-      sp.if operation == "register":
-          localProof.value.verified = False
-          localProof.value.register_date = sp.now
-          # TODO: Should clear metadata for some prooftypes
-
-      sp.if operation == "verify":
-          localProof.value.verified = True
-          
-      sp.if operation == "kyc":
-          localProof.value.meta["kyc"] = "true"
-          localProof.value.verified = False
-
-      sp.if operation == "kycplatform":
-          platform = cacheEntry.value['platform']
-          localProof.value.meta[platform] = "true"
-
-      sp.if operation == "meta":
-          metaKey = cacheEntry.value['key']
-          metaValue = cacheEntry.value['value']
-          localProof.value.meta[metaKey] = metaValue
-
-      localProofType = sp.local('localProofType', proofType)
-
-      sp.if operation == "rename":
-          localProofType.value = cacheEntry.value['newtype']
-
-      del self.data.updateProofCache[address]
-      c = sp.contract(Types.TSetProofPayload, self.data.idstore, entry_point="setProof").open_some()
-      sp.transfer(sp.record(address=address, prooftype=localProofType.value, proof=localProof.value), sp.mutez(0), c)
 
   @sp.entry_point
   def verifyProof(self, address, prooftype):
