@@ -109,7 +109,7 @@ class TezIDController(sp.Contract):
     c = sp.contract(Types.TSendPayload, self.data.idstore, entry_point="send").open_some()
     sp.transfer(sp.record(receiverAddress = receiverAddress, amount = amount), sp.mutez(0), c)
 
-  ## Proof functions
+  ## User Proof Functions
   #
 
   @sp.entry_point
@@ -142,6 +142,9 @@ class TezIDController(sp.Contract):
     proof.meta[platform] = "true"
     c = sp.contract(Types.TSetProofPayload, self.data.idstore, entry_point="setProof").open_some()
     sp.transfer(sp.record(address=sp.sender, prooftype='gov', proof=proof), sp.mutez(0), c)
+
+  ## Admin Proof Functions
+  #
 
   @sp.entry_point
   def verifyProof(self, address, prooftype):
