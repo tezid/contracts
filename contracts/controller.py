@@ -30,9 +30,16 @@ class TezIDController(sp.Contract):
       updateProofCache = {},
       metadata = metadata
     )
-        
-  ## Default (needed to receive stakiung rewards)
+
+  ## Helpers
   #
+
+  def checkAdmin(self):
+    sp.verify(sp.sender == self.data.admin, 'Only admin can call this entrypoint')    
+        
+  ## Default 
+  #
+
   @sp.entry_point
   def default(self):
     pass
@@ -42,38 +49,32 @@ class TezIDController(sp.Contract):
 
   @sp.entry_point
   def setAdmin(self, new_admin):
-    sp.if sp.sender != self.data.admin:
-      sp.failwith("Only admin can setAdmin")
+    self.checkAdmin()
     self.data.admin = new_admin
 
   @sp.entry_point
   def setCost(self, new_cost):
-    sp.if sp.sender != self.data.admin:
-      sp.failwith("Only admin can setCost")
+    self.checkAdmin()
     self.data.cost = new_cost
 
   @sp.entry_point
   def setStore(self, new_store):
-    sp.if sp.sender != self.data.admin:
-      sp.failwith("Only admin can setStore")
+    self.checkAdmin()
     self.data.idstore = new_store
 
   @sp.entry_point
   def send(self, receiverAddress, amount):
-    sp.if sp.sender != self.data.admin:
-      sp.failwith("Only admin can send")
+    self.checkAdmin()
     sp.send(receiverAddress, amount)
       
   @sp.entry_point
   def setBaker(self, new_delegate):
-    sp.if sp.sender != self.data.admin:
-      sp.failwith("Only admin can setBaker")
+    self.checkAdmin()
     sp.set_delegate(new_delegate)
 
   @sp.entry_point
   def setKycPlatforms(self, kycPlatforms):
-    sp.if sp.sender != self.data.admin:
-      sp.failwith("Only admin can setKycPlatforms")
+    self.checkAdmin()
     self.data.kycPlatforms = kycPlatforms
 
   ## Store admin functions
@@ -81,39 +82,48 @@ class TezIDController(sp.Contract):
   
   @sp.entry_point
   def setStoreAdmin(self, new_admin):
-      sp.if sp.sender != self.data.admin:
-          sp.failwith("Only admin can setStoreAdmin")
-      c = sp.contract(sp.TAddress, self.data.idstore, entry_point="setAdmin").open_some()
-      sp.transfer(new_admin, sp.mutez(0), c)
+    self.checkAdmin()
+    c = sp.contract(sp.TAddress, self.data.idstore, entry_point="setAdmin").open_some()
+    sp.transfer(new_admin, sp.mutez(0), c)
 
   @sp.entry_point
   def setStoreBaker(self, new_delegate):
-      sp.if sp.sender != self.data.admin:
-          sp.failwith("Only admin can setStoreBaker")
-      c = sp.contract(sp.TOption(sp.TKeyHash), self.data.idstore, entry_point="setBaker").open_some()
-      sp.transfer(new_delegate, sp.mutez(0), c)
+    self.checkAdmin()
+    c = sp.contract(sp.TOption(sp.TKeyHash), self.data.idstore, entry_point="setBaker").open_some()
+    sp.transfer(new_delegate, sp.mutez(0), c)
       
   @sp.entry_point
   def storeSend(self, receiverAddress, amount):
-      sp.if sp.sender != self.data.admin:
-          sp.failwith("Only admin can storeSend")
-      c = sp.contract(Types.TSendPayload, self.data.idstore, entry_point="send").open_some()
-      sp.transfer(sp.record(receiverAddress = receiverAddress, amount = amount), sp.mutez(0), c)
+    self.checkAdmin()
+    c = sp.contract(Types.TSendPayload, self.data.idstore, entry_point="send").open_some()
+    sp.transfer(sp.record(receiverAddress = receiverAddress, amount = amount), sp.mutez(0), c)
 
   ## Proof functions
   #
 
+  def getOrCreateProof(self, proofs, proofType):
+    localProof = sp.local('localProof', sp.record(
+      register_date = sp.now,
+      verified = False,
+      meta = sp.map()
+    ))
+    sp.if proofs.contains(proofType):
+      localProof.value =  proofs[proofType]
+    return localProof.value
+
   @sp.entry_point
-  def registerProof(self, prooftype):
-      sp.if sp.amount < self.data.cost:
-          sp.failwith("Amount too low")
-      self.data.updateProofCache[sp.sender] = {
-          "prooftype": prooftype,
-          "operation": "register"
-      }
-      callback_address = sp.self_entry_point_address(entry_point = 'updateProofCallback')
-      c = sp.contract(Types.TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
-      sp.transfer(sp.record(address=sp.sender, callback_address=callback_address), sp.mutez(0), c)
+  def registerProof(self, proofType):
+    sp.if sp.amount < self.data.cost:
+      sp.failwith('Amount too low')
+
+    proofs = sp.view('getProofsForAddress', self.data.idstore, sp.sender, t = Types.TProofs).open_some('Invalid view')
+    proof = self.getOrCreateProof(proofs, proofType)
+
+    proof.verified = False
+    proof.register_date = sp.now
+
+    c = sp.contract(Types.TSetProofPayload, self.data.idstore, entry_point="setProof").open_some()
+    sp.transfer(sp.record(address=sp.sender, prooftype=proofType, proof=proof), sp.mutez(0), c)
 
   @sp.entry_point
   def enableKYC(self):

@@ -4,11 +4,6 @@ import smartpy as sp
 cwd = os.getcwd()
 Types = sp.io.import_script_from_url("file://%s/contracts/types.py" % cwd)
 
-# TODO:
-# * checkAdmin function
-# * use views
-#
-
 ## TezID Store
 #
 
