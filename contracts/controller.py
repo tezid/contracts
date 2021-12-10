@@ -220,17 +220,13 @@ class TezIDController(sp.Contract):
 
   @sp.entry_point
   def setProofMeta(self, address, prooftype, key, value):
-      sp.if sp.sender != self.data.admin:
-          sp.failwith("Only admin can setProofMeta")
-      self.data.updateProofCache[address] = {
-          "prooftype": prooftype,
-          "operation": "meta",
-          "key": key,
-          "value": value
-      }
-      callback_address = sp.self_entry_point_address(entry_point = 'updateProofCallback')
-      c = sp.contract(Types.TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
-      sp.transfer(sp.record(address=address, callback_address=callback_address), sp.mutez(0), c)
+    self.checkAdmin()
+    proofs = sp.view('getProofsForAddress', self.data.idstore, address, t = Types.TProofs).open_some('Invalid view')
+    self.checkProofExistence(proofs, prooftype)
+    proof = self.getOrCreateProof(proofs, prooftype)
+    proof.meta[key] = value
+    c = sp.contract(Types.TSetProofPayload, self.data.idstore, entry_point="setProof").open_some()
+    sp.transfer(sp.record(address=address, prooftype=prooftype, proof=proof), sp.mutez(0), c)
 
   @sp.entry_point
   def renameProof(self, address, oldProofType, newProofType):
