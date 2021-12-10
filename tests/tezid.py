@@ -294,86 +294,86 @@ def test():
   #
   scenario += ctrl.setStoreBaker(sp.some(baker)).run(sender = user, voting_powers = voting_powers, valid=False)
     
-#@sp.add_target(name = "Set proof metadata", kind=allKind)
-#def test():
-#    admin = sp.test_account("admin")
-#    user = sp.test_account("User")
-#
-#    scenario = sp.test_scenario()
-#    store, ctrl = init(admin, scenario)
-#
-#    ## Controller admin can update proof metadata
-#    #
-#    scenario += ctrl.registerProof('twitter').run(sender = user, amount = sp.tez(5))
-#    scenario += ctrl.setProofMeta(sp.record(address=user.address, prooftype="twitter", key="handle", value="@asbjornenge")).run(sender = admin)
-#    scenario.verify_equal(store.data.identities[user.address]['twitter'].meta['handle'], "@asbjornenge")
-#    
-#    ## Updating proof should keep metadata
-#    #
-#    scenario += ctrl.verifyProof(sp.record(address=user.address, prooftype="twitter")).run(sender = admin)
-#    scenario.verify_equal(store.data.identities[user.address]['twitter'].verified, True)
-#    scenario.verify_equal(store.data.identities[user.address]['twitter'].meta['handle'], "@asbjornenge")
-#
-#@sp.add_target(name = "Enable KYC metadata", kind=allKind)
-#def test():
-#    admin = sp.test_account("admin")
-#    user = sp.test_account("User")
-#
-#    scenario = sp.test_scenario()
-#    store, ctrl = init(admin, scenario)
-#
-#    ## Owner of gov proof can set metadata kyc: true
-#    #
-#    scenario += ctrl.registerProof('gov').run(sender = user, amount = sp.tez(5))
-#    scenario += ctrl.enableKYC().run(sender = user)
-#    scenario.verify_equal(store.data.identities[user.address]['gov'].meta['kyc'], "true")
-#    
-#    ## Verify proof should keep KYC metadata
-#    #
-#    scenario += ctrl.verifyProof(sp.record(address=user.address, prooftype="gov")).run(sender = admin)
-#    scenario.verify_equal(store.data.identities[user.address]['gov'].verified, True)
-#    scenario.verify_equal(store.data.identities[user.address]['gov'].meta['kyc'], "true")
-#
-#    ## Renewing proof should keep KYC metadata
-#    #
-#    scenario += ctrl.registerProof('gov').run(sender = user, amount = sp.tez(5))
-#    scenario.verify_equal(store.data.identities[user.address]['gov'].verified, False)
-#    scenario.verify_equal(store.data.identities[user.address]['gov'].meta['kyc'], "true")
-#
-#    ## Admin can set supported KYC platforms
-#    #
-#    scenario += ctrl.setKycPlatforms({ 'kyc_crunchy', 'kyc_yaynay' }).run(sender = admin)
-#    scenario.verify(ctrl.data.kycPlatforms.contains('kyc_crunchy'))
-#
-#    ## User can enable supported KYC platforms
-#    #
-#    scenario += ctrl.enableKYCPlatform('kyc_crunchy').run(sender = user)
-#    scenario.verify_equal(store.data.identities[user.address]['gov'].meta['kyc_crunchy'], "true")
-#
-#    ## User cannot enable unsupported KYC platforms
-#    #
-#    scenario += ctrl.enableKYCPlatform('kyc_yolo').run(sender = user, valid = False)
-#    scenario += ctrl.enableKYCPlatform('kyc').run(sender = user, valid = False)
-#
-#@sp.add_target(name = "Rename proof", kind=allKind)
-#def test():
-#    admin = sp.test_account("admin")
-#    user = sp.test_account("User")
-#
-#    scenario = sp.test_scenario()
-#    store, ctrl = init(admin, scenario)
-#
-#    ## Admin can rename a prooftype
-#    #
-#    scenario += ctrl.registerProof('passport').run(sender = user, amount = sp.tez(5))
-#    scenario += ctrl.verifyProof(sp.record(address=user.address, prooftype="passport")).run(sender = admin)
-#    scenario.verify(store.data.identities[user.address].contains('passport'))
-#    scenario += ctrl.renameProof(sp.record(address=user.address, oldProofType='passport', newProofType='gov')).run(sender = admin)
-#    scenario.verify(store.data.identities[user.address].contains('gov'))
-#    scenario.verify(store.data.identities[user.address]['gov'].verified == True)
-#    scenario += ctrl.removeProof(sp.record(address=user.address, prooftype='passport')).run(sender = admin)
-#    scenario.verify_equal(store.data.identities[user.address].contains('passport'), False)
-#
-#    ## User cannot rename a prooftype
-#    #
-#    scenario += ctrl.renameProof(sp.record(address=user.address, oldProofType='gov', newProofType='passport')).run(sender = user, valid=False)
+@sp.add_target(name = "Set proof metadata", kind=allKind)
+def test():
+  admin = sp.test_account("admin")
+  user = sp.test_account("User")
+
+  scenario = sp.test_scenario()
+  store, ctrl = init(admin, scenario)
+
+  ## Controller admin can update proof metadata
+  #
+  scenario += ctrl.registerProof('twitter').run(sender = user, amount = sp.tez(5))
+  scenario += ctrl.setProofMeta(sp.record(address=user.address, prooftype="twitter", key="handle", value="@asbjornenge")).run(sender = admin)
+  scenario.verify_equal(store.data.identities[user.address]['twitter'].meta['handle'], "@asbjornenge")
+  
+  ## Updating proof should keep metadata
+  #
+  scenario += ctrl.verifyProof(sp.record(address=user.address, prooftype="twitter")).run(sender = admin)
+  scenario.verify_equal(store.data.identities[user.address]['twitter'].verified, True)
+  scenario.verify_equal(store.data.identities[user.address]['twitter'].meta['handle'], "@asbjornenge")
+
+@sp.add_target(name = "Enable KYC metadata", kind=allKind)
+def test():
+  admin = sp.test_account("admin")
+  user = sp.test_account("User")
+
+  scenario = sp.test_scenario()
+  store, ctrl = init(admin, scenario)
+
+  ## Owner of gov proof can set metadata kyc: true
+  #
+  scenario += ctrl.registerProof('gov').run(sender = user, amount = sp.tez(5))
+  scenario += ctrl.enableKYC().run(sender = user)
+  scenario.verify_equal(store.data.identities[user.address]['gov'].meta['kyc'], "true")
+  
+  ## Verify proof should keep KYC metadata
+  #
+  scenario += ctrl.verifyProof(sp.record(address=user.address, prooftype="gov")).run(sender = admin)
+  scenario.verify_equal(store.data.identities[user.address]['gov'].verified, True)
+  scenario.verify_equal(store.data.identities[user.address]['gov'].meta['kyc'], "true")
+
+  ## Renewing proof should keep KYC metadata
+  #
+  scenario += ctrl.registerProof('gov').run(sender = user, amount = sp.tez(5))
+  scenario.verify_equal(store.data.identities[user.address]['gov'].verified, False)
+  scenario.verify_equal(store.data.identities[user.address]['gov'].meta['kyc'], "true")
+
+  ## Admin can set supported KYC platforms
+  #
+  scenario += ctrl.setKycPlatforms({ 'kyc_crunchy', 'kyc_yaynay' }).run(sender = admin)
+  scenario.verify(ctrl.data.kycPlatforms.contains('kyc_crunchy'))
+
+  ## User can enable supported KYC platforms
+  #
+  scenario += ctrl.enableKYCPlatform('kyc_crunchy').run(sender = user)
+  scenario.verify_equal(store.data.identities[user.address]['gov'].meta['kyc_crunchy'], "true")
+
+  ## User cannot enable unsupported KYC platforms
+  #
+  scenario += ctrl.enableKYCPlatform('kyc_yolo').run(sender = user, valid = False)
+  scenario += ctrl.enableKYCPlatform('kyc').run(sender = user, valid = False)
+
+@sp.add_target(name = "Rename proof", kind=allKind)
+def test():
+  admin = sp.test_account("admin")
+  user = sp.test_account("User")
+
+  scenario = sp.test_scenario()
+  store, ctrl = init(admin, scenario)
+
+  ## Admin can rename a prooftype
+  #
+  scenario += ctrl.registerProof('passport').run(sender = user, amount = sp.tez(5))
+  scenario += ctrl.verifyProof(sp.record(address=user.address, prooftype="passport")).run(sender = admin)
+  scenario.verify(store.data.identities[user.address].contains('passport'))
+  scenario += ctrl.renameProof(sp.record(address=user.address, oldProofType='passport', newProofType='gov')).run(sender = admin)
+  scenario.verify(store.data.identities[user.address].contains('gov'))
+  scenario.verify(store.data.identities[user.address]['gov'].verified == True)
+  scenario += ctrl.removeProof(sp.record(address=user.address, prooftype='passport')).run(sender = admin)
+  scenario.verify_equal(store.data.identities[user.address].contains('passport'), False)
+
+  ## User cannot rename a prooftype
+  #
+  scenario += ctrl.renameProof(sp.record(address=user.address, oldProofType='gov', newProofType='passport')).run(sender = user, valid=False)
