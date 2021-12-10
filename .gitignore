@@ -5,3 +5,4 @@ test
 bin
 lib
 node_modules
+pyvenv.cfg
