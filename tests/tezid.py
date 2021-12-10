@@ -3,13 +3,14 @@ import smartpy as sp
 
 cwd = os.getcwd()
 Store = sp.io.import_script_from_url("file://%s/contracts/store.py" % cwd)
+Controller = sp.io.import_script_from_url("file://%s/contracts/controller.py" % cwd)
 
 ## Tests
 #
 
 kindAll = 'all'
 
-def init(admin, scenario, cost=sp.tez(5)):
+def init(admin, scenario):
     store = Store.TezIDStore(
       admin.address, 
       sp.big_map(), 
@@ -21,10 +22,19 @@ def init(admin, scenario, cost=sp.tez(5)):
       )
     )
     scenario += store
-#    ctrl = TezIDController(admin.address, store.address, cost)
-#    scenario += ctrl
-#    scenario += store.setAdmin(ctrl.address).run(sender = admin)
-    return store
+    ctrl = Controller.TezIDController(
+      admin.address, 
+      store.address, 
+      sp.big_map(
+        {
+          "": sp.utils.bytes_of_string("tezos-storage:content"),
+          "content": sp.utils.bytes_of_string('{"name": "TezID Controller"}')
+        }
+      )
+    )
+    scenario += ctrl
+    scenario += store.setAdmin(ctrl.address).run(sender = admin)
+    return store, ctrl
 
 @sp.add_target(name = "Register proof", kind=kindAll)
 def test():
@@ -32,17 +42,17 @@ def test():
     user = sp.test_account("User")
 
     scenario = sp.test_scenario()
-    store = init(admin, scenario)
+    store, ctrl = init(admin, scenario)
 
-#    ## A user can self-register a unverified proof
-#    #
-#    scenario += ctrl.registerProof('phone').run(sender = user, amount = sp.tez(5))
-#    scenario.verify(store.data.identities.contains(user.address))
-#    scenario.verify(store.data.identities[user.address]['phone'].verified == False)
-#
-#    ## Too low fee results in failure
-#    #
-#    scenario += ctrl.registerProof('phone').run(sender = user, amount = sp.tez(4), valid = False)
+    ## A user can self-register a unverified proof
+    #
+    scenario += ctrl.registerProof('phone').run(sender=user, amount=sp.tez(5))
+    scenario.verify(store.data.identities.contains(user.address))
+    scenario.verify(store.data.identities[user.address]['phone'].verified == False)
+
+    ## Too low fee results in failure
+    #
+    scenario += ctrl.registerProof('phone').run(sender=user, amount=sp.tez(4), valid=False, exception='Amount too low')
   
 #@sp.add_test(name = "Verify proof", is_default=runAll)
 #def test():

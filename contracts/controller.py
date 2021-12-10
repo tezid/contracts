@@ -1,4 +1,8 @@
+import os
 import smartpy as sp
+
+cwd = os.getcwd()
+Types = sp.io.import_script_from_url("file://%s/contracts/types.py" % cwd)
 
 # TODO:
 # * checkAdmin function
@@ -9,20 +13,22 @@ import smartpy as sp
 #
 
 class TezIDController(sp.Contract):
-  def __init__(self, admin, idstore, cost):
+  def __init__(self, admin, idstore, metadata):
     self.init_type(sp.TRecord(
       admin = sp.TAddress,
       idstore = sp.TAddress,
       cost = sp.TMutez,
       kycPlatforms = sp.TSet(sp.TString),
-      updateProofCache = sp.TMap(sp.TAddress, sp.TMap(sp.TString, sp.TString))
+      updateProofCache = sp.TMap(sp.TAddress, sp.TMap(sp.TString, sp.TString)),
+      metadata = sp.TBigMap(sp.TString, sp.TBytes)
     ))
     self.init(
       admin = admin, 
       idstore = idstore,
-      cost = cost,
+      cost = sp.tez(5),
       kycPlatforms = sp.set(),
-      updateProofCache = {}
+      updateProofCache = {},
+      metadata = metadata
     )
         
   ## Default (needed to receive stakiung rewards)
@@ -91,7 +97,7 @@ class TezIDController(sp.Contract):
   def storeSend(self, receiverAddress, amount):
       sp.if sp.sender != self.data.admin:
           sp.failwith("Only admin can storeSend")
-      c = sp.contract(TSendPayload, self.data.idstore, entry_point="send").open_some()
+      c = sp.contract(Types.TSendPayload, self.data.idstore, entry_point="send").open_some()
       sp.transfer(sp.record(receiverAddress = receiverAddress, amount = amount), sp.mutez(0), c)
 
   ## Proof functions
@@ -106,7 +112,7 @@ class TezIDController(sp.Contract):
           "operation": "register"
       }
       callback_address = sp.self_entry_point_address(entry_point = 'updateProofCallback')
-      c = sp.contract(TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
+      c = sp.contract(Types.TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
       sp.transfer(sp.record(address=sp.sender, callback_address=callback_address), sp.mutez(0), c)
 
   @sp.entry_point
@@ -116,7 +122,7 @@ class TezIDController(sp.Contract):
           "operation": "kyc"
       }
       callback_address = sp.self_entry_point_address(entry_point = 'updateProofCallback')
-      c = sp.contract(TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
+      c = sp.contract(Types.TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
       sp.transfer(sp.record(address=sp.sender, callback_address=callback_address), sp.mutez(0), c)
 
   @sp.entry_point
@@ -129,7 +135,7 @@ class TezIDController(sp.Contract):
           "platform": platform
       }
       callback_address = sp.self_entry_point_address(entry_point = 'updateProofCallback')
-      c = sp.contract(TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
+      c = sp.contract(Types.TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
       sp.transfer(sp.record(address=sp.sender, callback_address=callback_address), sp.mutez(0), c)
 
   @sp.entry_point
@@ -139,7 +145,7 @@ class TezIDController(sp.Contract):
       sp.if self.data.updateProofCache.contains(address) == False:
           sp.failwith("No cache entry for address")
       sp.set_type(address, sp.TAddress)
-      sp.set_type(proofs, TProofs)
+      sp.set_type(proofs, Types.TProofs)
       cacheEntry = sp.local('cacheEntry', self.data.updateProofCache[address])
       proofType = cacheEntry.value['prooftype']
       operation = cacheEntry.value['operation']
@@ -188,7 +194,7 @@ class TezIDController(sp.Contract):
           localProofType.value = cacheEntry.value['newtype']
 
       del self.data.updateProofCache[address]
-      c = sp.contract(TSetProofPayload, self.data.idstore, entry_point="setProof").open_some()
+      c = sp.contract(Types.TSetProofPayload, self.data.idstore, entry_point="setProof").open_some()
       sp.transfer(sp.record(address=address, prooftype=localProofType.value, proof=localProof.value), sp.mutez(0), c)
 
   @sp.entry_point
@@ -200,7 +206,7 @@ class TezIDController(sp.Contract):
           "operation": "verify"
       }
       callback_address = sp.self_entry_point_address(entry_point = 'updateProofCallback')
-      c = sp.contract(TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
+      c = sp.contract(Types.TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
       sp.transfer(sp.record(address=address, callback_address=callback_address), sp.mutez(0), c)
 
   @sp.entry_point
@@ -214,7 +220,7 @@ class TezIDController(sp.Contract):
           "value": value
       }
       callback_address = sp.self_entry_point_address(entry_point = 'updateProofCallback')
-      c = sp.contract(TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
+      c = sp.contract(Types.TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
       sp.transfer(sp.record(address=address, callback_address=callback_address), sp.mutez(0), c)
 
   @sp.entry_point
@@ -227,14 +233,14 @@ class TezIDController(sp.Contract):
           "operation": "rename"
       }
       callback_address = sp.self_entry_point_address(entry_point = 'updateProofCallback')
-      c = sp.contract(TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
+      c = sp.contract(Types.TGetProofsRequestPayload, self.data.idstore, entry_point="getProofs").open_some()
       sp.transfer(sp.record(address=address, callback_address=callback_address), sp.mutez(0), c)
       
   @sp.entry_point
   def removeProof(self, prooftype, address):
       sp.if sp.sender != self.data.admin:
           sp.failwith("Only admin can removeProof")
-      c = sp.contract(TDelProofPayload, self.data.idstore, entry_point="delProof").open_some()
+      c = sp.contract(Types.TDelProofPayload, self.data.idstore, entry_point="delProof").open_some()
       sp.transfer(sp.record(address = address, prooftype = prooftype), sp.mutez(0), c)
       
   @sp.entry_point
