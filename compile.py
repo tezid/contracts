@@ -14,14 +14,16 @@ TezIDStoreMetadata = {
   "description": "Datastore for TezID",
   "version": "2.0.0",
   "homepage": "https://tezid.net",
-  "authors": ["asbjornenge <asbjorn@tezid.net>"]
+  "authors": ["asbjornenge <asbjorn@tezid.net>"],
+  "interfaces": ["TZIP-016"]
 }
 TezIDControllerMetadata = {
   "name": "TezID Controller",
   "description": "Controller for TezID",
   "version": "3.0.0",
   "homepage": "https://tezid.net",
-  "authors": ["asbjornenge <asbjorn@tezid.net>"]
+  "authors": ["asbjornenge <asbjorn@tezid.net>"],
+  "interfaces": ["TZIP-016"]
 }
 
 sp.add_compilation_target("store", Store.TezIDStore(
@@ -42,7 +44,7 @@ sp.add_compilation_target("controller", Controller.TezIDController(
     sp.big_map(
       {
         "": sp.utils.bytes_of_string("tezos-storage:content"),
-        "content": sp.utils.bytes_of_string('{"name": "TezID Controller"}')
+        "content": sp.utils.bytes_of_string(json.dumps(TezIDControllerMetadata))
       }
     )
   )

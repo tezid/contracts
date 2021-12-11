@@ -55,7 +55,7 @@ class TezIDStore(sp.Contract):
   def setProof(self, address, prooftype, proof):
     self.checkAdmin()
     sp.if self.data.identities.contains(address) == False:
-      self.data.identities[address] = {}
+      self.data.identities[address] = sp.map({})
     self.data.identities[address][prooftype] = proof
       
   @sp.entry_point
@@ -81,11 +81,8 @@ class TezIDStore(sp.Contract):
 
   @sp.onchain_view()
   def getProofsForAddress(self, address):
-    proofs = sp.local('proofs', sp.map())
+    proofs = sp.local('proofs', sp.map({}))
     sp.if self.data.identities.contains(address):
       proofs.value = self.data.identities[address]
     sp.result(proofs.value)
 
-  @sp.onchain_view()
-  def getAllProofs(self):
-    sp.result(self.data.identities)
