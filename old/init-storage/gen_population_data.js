@@ -2,13 +2,13 @@ import fetch from 'node-fetch'
 
 // v1 -> v2
 
-const CONTRACT = 'KT18ju2Pk6YvNqhD8tsRXGGMRfDVfFkqfhYA'
+const CONTRACT = 'KT19gfem4ukWAgj4dZuCyQyKQe1WnSbR8DRp'
 const TZSTATS_API = 'https://api.tzstats.com'
 
 const gen = async () => {
   const res = await fetch(`${TZSTATS_API}/explorer/contract/${CONTRACT}/storage`)
   const storage = await res.json()
-  const identities = Object.keys(storage.value.identities).map(address => {
+  const identities = Object.keys(storage.value.identities).slice(0,2).map(address => {
     const proofs = Object.keys(storage.value.identities[address]).map(proofType => {
       const pt = storage.value.identities[address][proofType]
       const verified = pt.verified === 'true' ? 'True' : 'False'
