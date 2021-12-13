@@ -9,6 +9,7 @@ TProof = sp.TRecord(
     meta = sp.TMap(sp.TString, sp.TString)
 )
 TProofs = sp.TMap(sp.TString, TProof)
+TSetProofs = sp.TMap(sp.TAddress, TProofs)
 TIdentities = sp.TBigMap(sp.TAddress, TProofs)
 TSendPayload = sp.TRecord(receiverAddress = sp.TAddress, amount = sp.TMutez)
 TSetProofPayload = sp.TRecord(

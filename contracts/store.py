@@ -4,7 +4,7 @@ import smartpy as sp
 cwd = os.getcwd()
 Types = sp.io.import_script_from_url("file://%s/contracts/types.py" % cwd)
 
-# TODO: Add some labmdas?
+# TODO: Add a failsafe labmda?
 
 ## TezID Store
 #
@@ -70,8 +70,12 @@ class TezIDStore(sp.Contract):
     self.checkAdmin()
     del self.data.identities[address]
 
-  ## TODO: Set Proofs (used for init of fresh store)
-  #
+  @sp.entry_point
+  def setProofs(self, proofs):
+    self.checkAdmin()
+    sp.set_type(proofs, Types.TSetProofs)
+    sp.for proof in proofs.items():
+      self.data.identities[proof.key] = proof.value
 
   ## Get Proofs
   #
