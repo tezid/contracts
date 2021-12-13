@@ -4,6 +4,8 @@ import smartpy as sp
 cwd = os.getcwd()
 Types = sp.io.import_script_from_url("file://%s/contracts/types.py" % cwd)
 
+# TODO: Add some labmdas?
+
 ## TezID Store
 #
 
@@ -67,6 +69,9 @@ class TezIDStore(sp.Contract):
   def removeIdentity(self, address):
     self.checkAdmin()
     del self.data.identities[address]
+
+  ## TODO: Set Proofs (used for init of fresh store)
+  #
 
   ## Get Proofs
   #
