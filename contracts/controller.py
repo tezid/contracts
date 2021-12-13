@@ -14,7 +14,6 @@ class TezIDController(sp.Contract):
       idstore = sp.TAddress,
       cost = sp.TMutez,
       kycPlatforms = sp.TSet(sp.TString),
-      updateProofCache = sp.TMap(sp.TAddress, sp.TMap(sp.TString, sp.TString)),
       metadata = sp.TBigMap(sp.TString, sp.TBytes)
     ))
     self.init(
@@ -22,7 +21,6 @@ class TezIDController(sp.Contract):
       idstore = idstore,
       cost = sp.tez(5),
       kycPlatforms = sp.set(),
-      updateProofCache = {},
       metadata = metadata
     )
 
