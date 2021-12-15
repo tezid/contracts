@@ -27,6 +27,7 @@ class TezIDController(sp.Contract):
   ## Helpers
   #
 
+  @sp.private_lambda(with_storage='read-only', wrap_call=True)
   def checkAdmin(self):
     sp.verify(sp.sender == self.data.admin, 'Only admin can call this entrypoint')    
 

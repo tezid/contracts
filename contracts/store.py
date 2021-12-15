@@ -4,8 +4,6 @@ import smartpy as sp
 cwd = os.getcwd()
 Types = sp.io.import_script_from_url("file://%s/contracts/types.py" % cwd)
 
-# TODO: Add a failsafe labmda?
-
 ## TezID Store
 #
 
@@ -25,6 +23,7 @@ class TezIDStore(sp.Contract):
   ## Helpers
   #
 
+  @sp.private_lambda(with_storage='read-only', wrap_call=True)
   def checkAdmin(self):
     sp.verify(sp.sender == self.data.admin, 'Only admin can call this entrypoint')    
 
