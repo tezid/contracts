@@ -349,3 +349,26 @@ def test():
   scenario += ctrl.enableKYCPlatform('kyc_yolo').run(sender = user, valid = False)
   scenario += ctrl.enableKYCPlatform('kyc').run(sender = user, valid = False)
 
+@sp.add_target(name = "Updateable entrypoints", kind=allKind)
+def test():
+  admin = sp.test_account("admin")
+  user = sp.test_account("User")
+
+  scenario = sp.test_scenario()
+  store, ctrl = init(admin, scenario)
+
+  ## Set store admin
+  #
+  scenario += ctrl.setStoreAdmin(admin.address).run(sender=admin)
+
+  ## Admin can update entrypoint
+  #
+  def logic(self, params):
+    sp.verify(sp.sender == self.data.admin, 'Only admin can call this')
+    sp.set_type(params, sp.TBytes)
+    addr = sp.unpack(params, sp.TAddress).open_some('Bad parameter')
+    self.data.admin = addr
+  ep_update = sp.utils.wrap_entry_point('failsafe', logic)
+  scenario += store.setFailsafeLogic(ep_update).run(sender=admin)
+  scenario += store.failsafe(sp.pack(user.address)).run(sender=admin)
+  scenario.verify(store.data.admin == user.address)

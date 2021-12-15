@@ -30,7 +30,7 @@ class TezIDStore(sp.Contract):
 
   ## Default
   #
-      
+
   @sp.entry_point
   def default(self):
     pass
@@ -76,6 +76,20 @@ class TezIDStore(sp.Contract):
     sp.set_type(proofs, Types.TSetProofs)
     sp.for proof in proofs.items():
       self.data.identities[proof.key] = proof.value
+
+  ## Failsafe updateable entrypoint
+  #
+
+  @sp.entry_point
+  def setFailsafeLogic(self, logic):
+    self.checkAdmin()
+    sp.set_entry_point('failsafe', logic)
+
+  @sp.entry_point(lazify=True, lazy_no_code=True)
+  def failsafe(self, params):
+    self.checkAdmin()
+    sp.set_type(params, sp.TBytes)
+    pass
 
   ## Get Proofs
   #
