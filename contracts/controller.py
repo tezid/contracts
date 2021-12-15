@@ -87,27 +87,6 @@ class TezIDController(sp.Contract):
     self.checkAdmin()
     self.data.kycPlatforms = kycPlatforms
 
-  ## Store admin functions
-  #
-  
-  @sp.entry_point
-  def setStoreAdmin(self, new_admin):
-    self.checkAdmin()
-    c = sp.contract(sp.TAddress, self.data.idstore, entry_point="setAdmin").open_some()
-    sp.transfer(new_admin, sp.mutez(0), c)
-
-  @sp.entry_point
-  def setStoreBaker(self, new_delegate):
-    self.checkAdmin()
-    c = sp.contract(sp.TOption(sp.TKeyHash), self.data.idstore, entry_point="setBaker").open_some()
-    sp.transfer(new_delegate, sp.mutez(0), c)
-      
-  @sp.entry_point
-  def storeSend(self, receiverAddress, amount):
-    self.checkAdmin()
-    c = sp.contract(Types.TSendPayload, self.data.idstore, entry_point="send").open_some()
-    sp.transfer(sp.record(receiverAddress = receiverAddress, amount = amount), sp.mutez(0), c)
-
   ## User Proof Functions
   #
 

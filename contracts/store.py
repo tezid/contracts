@@ -8,14 +8,14 @@ Types = sp.io.import_script_from_url("file://%s/contracts/types.py" % cwd)
 #
 
 class TezIDStore(sp.Contract):
-  def __init__(self, admin, initialIdentities, metadata):
+  def __init__(self, admins, initialIdentities, metadata):
     self.init_type(sp.TRecord(
-      admin = sp.TAddress,
+      admins = sp.TSet(sp.TAddress),
       identities = Types.TIdentities,
       metadata = sp.TBigMap(sp.TString, sp.TBytes)
     ))
     self.init(
-      admin = admin,
+      admins = admins, 
       identities = initialIdentities,
       metadata = metadata
     )
@@ -25,7 +25,7 @@ class TezIDStore(sp.Contract):
 
   @sp.private_lambda(with_storage='read-only', wrap_call=True)
   def checkAdmin(self):
-    sp.verify(sp.sender == self.data.admin, 'Only admin can call this entrypoint')    
+    sp.verify(self.data.admins.contains(sp.sender), 'Only admin can call this entrypoint')    
 
   ## Default
   #
@@ -38,9 +38,14 @@ class TezIDStore(sp.Contract):
   #
    
   @sp.entry_point
-  def setAdmin(self, new_admin):
+  def addAdmin(self, admin):
     self.checkAdmin()
-    self.data.admin = new_admin
+    self.data.admins.add(admin)
+
+  @sp.entry_point
+  def delAdmin(self, admin):
+    self.checkAdmin()
+    self.data.admins.remove(admin)
       
   @sp.entry_point
   def setBaker(self, new_delegate):

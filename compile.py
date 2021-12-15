@@ -26,14 +26,14 @@ TezIDStoreMetadata = {
 TezIDControllerMetadata = {
   "name": "TezID Controller",
   "description": "Controller for TezID",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "homepage": "https://tezid.net",
   "authors": ["asbjornenge <asbjorn@tezid.net>"],
   "interfaces": ["TZIP-016"]
 }
 
 sp.add_compilation_target("store", Store.TezIDStore(
-    admin, 
+    sp.set([admin]), 
     sp.big_map(),
     sp.big_map(
       {

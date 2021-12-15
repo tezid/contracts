@@ -12,7 +12,7 @@ allKind = 'all'
 
 def init(admin, scenario):
   store = Store.TezIDStore(
-    admin.address, 
+    sp.set([admin.address]), 
     sp.big_map(), 
     sp.big_map(
       {
@@ -33,7 +33,7 @@ def init(admin, scenario):
     )
   )
   scenario += ctrl
-  scenario += store.setAdmin(ctrl.address).run(sender = admin)
+  scenario += store.addAdmin(ctrl.address).run(sender = admin)
   return store, ctrl
 
 @sp.add_target(name = "Register proof", kind=allKind)
@@ -184,17 +184,6 @@ def test():
   scenario.verify_equal(store.balance, sp.tez(5))
   scenario.verify_equal(ctrl.balance, sp.tez(0))
 
-  ## Controller admin can send from store via storeSend
-  #
-  scenario += ctrl.storeSend(sp.record(receiverAddress = ctrl.address, amount = sp.tez(5))).run(sender = admin)
-  scenario.verify_equal(store.balance, sp.tez(0))
-  scenario.verify_equal(ctrl.balance, sp.tez(5))
-
-  ## Non admin cannot storeSend or send on store directly
-  #
-  scenario += ctrl.storeSend(sp.record(receiverAddress=receiver.address, amount=sp.tez(2))).run(sender = user, valid = False)
-  scenario += store.send(sp.record(receiverAddress=receiver.address, amount=sp.tez(2))).run(sender = admin, valid = False)
-    
 @sp.add_target(name = "Set admin", kind=allKind)
 def test():
   admin = sp.test_account("admin")
@@ -204,33 +193,26 @@ def test():
   scenario = sp.test_scenario()
   store, ctrl = init(admin, scenario)
 
-  ## Admin can update admin
+  ## Admin can update admin (Controller)
   #
   scenario += ctrl.setAdmin(admin2.address).run(sender = admin)
   scenario.verify(ctrl.data.admin == admin2.address)
 
-  ## Non-admin cannot update admin
+  ## Non-admin cannot update admin (Controller)
   #
   scenario += ctrl.setAdmin(admin.address).run(sender = admin, valid=False)
 
-  ## Controller admin (or other user) cannot set store admin directly
+  ## Admin can add and remove admin (Store)
   #
-  scenario += store.setAdmin(admin.address).run(sender = admin, valid=False)
-  scenario += store.setAdmin(admin.address).run(sender = user, valid=False)
+  scenario += store.addAdmin(admin2.address).run(sender = admin)
+  scenario.verify(store.data.admins.contains(admin2.address))
+  scenario += store.delAdmin(admin2.address).run(sender = admin)
+  scenario.verify(store.data.admins.contains(admin2.address) == False)
+
+  ## Non-admin cannot update admins (Store)
+  #
+  scenario += store.addAdmin(user.address).run(sender = user, valid=False)
   
-  ## Admin can set store admin via setStoreAdmin
-  #
-  scenario.verify(store.data.admin == ctrl.address)
-  ctrl2 = Controller.TezIDController(admin.address, store.address, sp.big_map({}))
-  scenario += ctrl2
-  scenario += ctrl.setStoreAdmin(ctrl2.address).run(sender = admin2)
-  scenario.verify(store.data.admin == ctrl2.address)
-  
-  ## Users cannot set store admin via setStoreAdmin
-  #
-  scenario += ctrl.setStoreAdmin(user.address).run(sender = user, valid=False)
-  scenario += ctrl.setStoreAdmin(admin.address).run(sender = admin, valid=False)
-    
 @sp.add_target(name = "Set store", kind=allKind)
 def test():
   admin = sp.test_account("admin")
@@ -238,7 +220,7 @@ def test():
 
   scenario = sp.test_scenario()
   store, ctrl = init(admin, scenario)
-  store2 = Store.TezIDStore(admin.address, sp.big_map(), sp.big_map())
+  store2 = Store.TezIDStore(sp.set([admin.address]), sp.big_map(), sp.big_map())
   scenario += store2
 
   ## Admin can update store
@@ -263,31 +245,24 @@ def test():
   scenario = sp.test_scenario()
   store, ctrl = init(admin, scenario)
 
-  ## Admin can update baker
+  ## Admin can update baker (Controller)
   #
   scenario.verify_equal(ctrl.baker, sp.none)
   scenario += ctrl.setBaker(sp.some(baker)).run(sender = admin, voting_powers = voting_powers)
   scenario.verify_equal(ctrl.baker, sp.some(baker))
 
-  ## User cannot update baker
+  ## User cannot update baker (Controller)
   #
   scenario += ctrl.setBaker(sp.some(baker)).run(sender = user, voting_powers = voting_powers, valid = False)
   
-  ## Controller admin (or other user) cannot set store baker directly
+  ## Admin can update baker (Store)
   #
-  scenario += store.setBaker(sp.some(baker)).run(sender = admin, voting_powers = voting_powers, valid=False)
+  scenario += store.setBaker(sp.some(baker)).run(sender = admin, voting_powers = voting_powers)
+
+  ## User cannot update baker (Store)
+  #
   scenario += store.setBaker(sp.some(baker)).run(sender = user, voting_powers = voting_powers, valid=False)
   
-  ## Admin can set store baker via setStoreBaker
-  #
-  scenario.verify_equal(store.baker, sp.none)
-  scenario += ctrl.setStoreBaker(sp.some(baker)).run(sender = admin, voting_powers = voting_powers)
-  scenario.verify(store.baker == sp.some(baker))
-  
-  ## Users cannot set store baker via setStoreBaker
-  #
-  scenario += ctrl.setStoreBaker(sp.some(baker)).run(sender = user, voting_powers = voting_powers, valid=False)
-    
 @sp.add_target(name = "Set proof metadata", kind=allKind)
 def test():
   admin = sp.test_account("admin")
@@ -357,18 +332,14 @@ def test():
   scenario = sp.test_scenario()
   store, ctrl = init(admin, scenario)
 
-  ## Set store admin
-  #
-  scenario += ctrl.setStoreAdmin(admin.address).run(sender=admin)
-
   ## Admin can update entrypoint
   #
   def logic(self, params):
-    sp.verify(sp.sender == self.data.admin, 'Only admin can call this')
+    sp.verify(self.data.admins.contains(sp.sender), 'Only admin can call this')
     sp.set_type(params, sp.TBytes)
     addr = sp.unpack(params, sp.TAddress).open_some('Bad parameter')
-    self.data.admin = addr
+    self.data.admins.add(addr)
   ep_update = sp.utils.wrap_entry_point('failsafe', logic)
   scenario += store.setFailsafeLogic(ep_update).run(sender=admin)
   scenario += store.failsafe(sp.pack(user.address)).run(sender=admin)
-  scenario.verify(store.data.admin == user.address)
+  scenario.verify(store.data.admins.contains(user.address))
