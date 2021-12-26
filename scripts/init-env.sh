@@ -1,5 +1,4 @@
 #!/bin/bash
+./scripts/install-smartpy.sh --prefix bin
 virtualenv .
-# ipfs install-smartpy.sh !!
-./scripts/install-smartpy.sh local-install bin
 cd bin && ln -sf SmartPy.sh spy && cd ..
