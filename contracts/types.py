@@ -1,6 +1,6 @@
 import smartpy as sp
 
-## Types
+## Other Types
 #
 
 TProof = sp.TRecord(
@@ -28,4 +28,21 @@ TGetProofsRequestPayload = sp.TRecord(
 TGetProofsResponsePayload = sp.TRecord(
   address = sp.TAddress,
   proofs = TProofs
+)
+
+## Storage Types
+#
+
+TStoreStorage = sp.TRecord(
+  admins = sp.TSet(sp.TAddress),
+  identities = TIdentities,
+  metadata = sp.TBigMap(sp.TString, sp.TBytes)
+)
+
+## Labmda Types
+#
+
+TStoreLambdaParams = sp.TRecord(
+  storage = TStoreStorage,
+  params = sp.TBytes
 )

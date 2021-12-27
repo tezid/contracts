@@ -9,11 +9,7 @@ Types = sp.io.import_script_from_url("file://%s/contracts/types.py" % cwd)
 
 class TezIDStore(sp.Contract):
   def __init__(self, admins, initialIdentities, metadata):
-    self.init_type(sp.TRecord(
-      admins = sp.TSet(sp.TAddress),
-      identities = Types.TIdentities,
-      metadata = sp.TBigMap(sp.TString, sp.TBytes)
-    ))
+    self.init_type(Types.TStoreStorage)
     self.init(
       admins = admins, 
       identities = initialIdentities,
@@ -85,15 +81,16 @@ class TezIDStore(sp.Contract):
   #
 
   @sp.entry_point
-  def setFailsafeLogic(self, logic):
+  def triggerLambda(self, logic, params):
     self.checkAdmin()
-    sp.set_entry_point('failsafe', logic)
-
-  @sp.entry_point(lazify=True, lazy_no_code=True)
-  def failsafe(self, params):
-    self.checkAdmin()
+    sp.set_type(logic, sp.TLambda(Types.TStoreLambdaParams, Types.TStoreStorage))
     sp.set_type(params, sp.TBytes)
-    pass
+    lp = sp.record(
+      storage = self.data,
+      params = params
+    )
+    storage = logic(lp)
+    self.data = storage
 
   ## Get Proofs
   #

@@ -2,6 +2,7 @@ import os
 import smartpy as sp
 
 cwd = os.getcwd()
+Types = sp.io.import_script_from_url("file://%s/contracts/types.py" % cwd)
 Store = sp.io.import_script_from_url("file://%s/contracts/store.py" % cwd)
 Controller = sp.io.import_script_from_url("file://%s/contracts/controller.py" % cwd)
 
@@ -324,7 +325,7 @@ def test():
   scenario += ctrl.enableKYCPlatform('kyc_yolo').run(sender = user, valid = False)
   scenario += ctrl.enableKYCPlatform('kyc').run(sender = user, valid = False)
 
-@sp.add_target(name = "Updateable entrypoints", kind=allKind)
+@sp.add_target(name = "Updateable lambdas", kind=allKind)
 def test():
   admin = sp.test_account("admin")
   user = sp.test_account("User")
@@ -334,12 +335,11 @@ def test():
 
   ## Admin can update entrypoint
   #
-  def logic(self, params):
-    sp.verify(self.data.admins.contains(sp.sender), 'Only admin can call this')
-    sp.set_type(params, sp.TBytes)
-    addr = sp.unpack(params, sp.TAddress).open_some('Bad parameter')
-    self.data.admins.add(addr)
-  ep_update = sp.utils.wrap_entry_point('failsafe', logic)
-  scenario += store.setFailsafeLogic(ep_update).run(sender=admin)
-  scenario += store.failsafe(sp.pack(user.address)).run(sender=admin)
+  def logic(params):
+    sp.set_type(params, Types.TStoreLambdaParams)
+    storage = sp.local('storage', params.storage)
+    addr = sp.unpack(params.params, sp.TAddress).open_some('Bad parameter')
+    storage.value.admins.add(addr)
+    sp.result(storage.value)
+  scenario += store.triggerLambda(sp.record(logic=sp.build_lambda(logic), params=sp.pack(user.address))).run(sender=admin)
   scenario.verify(store.data.admins.contains(user.address))
