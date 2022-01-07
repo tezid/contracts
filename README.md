@@ -10,8 +10,8 @@ They are written in [SmartPy](https://smartpy.io).
   * Store - [KT1RaNxxgmVRXpyu927rbBFq835pnQk6cfvM](https://better-call.dev/mainnet/KT1RaNxxgmVRXpyu927rbBFq835pnQk6cfvM/)
   * Controller - [KT1KbV8dBrkFopgjcCc4qb2336fcGgTvRGRC](https://better-call.dev/mainnet/KT1KbV8dBrkFopgjcCc4qb2336fcGgTvRGRC/)
 * Hangzhounet
-  * Store - [KT1DB16Rv92C8uAmuMqdhKziTTcXrVHrpqBt](https://better-call.dev/hangzhou2net/KT1DB16Rv92C8uAmuMqdhKziTTcXrVHrpqBt/)
-  * Controller - [KT1LpPaw3F7hAW8HBzD9b5EggUYSYWRKe7G4](https://better-call.dev/hangzhou2net/KT1LpPaw3F7hAW8HBzD9b5EggUYSYWRKe7G4/)
+  * Store - [KT1BfyfcaVhR8wThLgdsS4xricxMKvwkh1a1](https://better-call.dev/hangzhou2net/KT1BfyfcaVhR8wThLgdsS4xricxMKvwkh1a1/)
+  * Controller - [KT1JstwQxj4sQVb9TDVG6Dr4jGjzxs5YQu7Y](https://better-call.dev/hangzhou2net/KT1JstwQxj4sQVb9TDVG6Dr4jGjzxs5YQu7Y/)
 
 ## Import
 
