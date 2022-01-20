@@ -23,6 +23,11 @@ def mint(scene, admin, token, token_id, owner, amount, decimals=8, name='TestTok
     token_id = token_id
   ).run(sender = admin)
 
+def transfer(scene, token, sender, receiver, amount, token_id=0):
+  txs = [sp.record(amount=amount, to_=receiver, token_id=token_id)]
+  arg = [sp.record(from_=sender, txs=txs)]
+  scene += token.transfer(arg).run(sender=sender)
+
 def init(admin, scene):
   farm = Farm.TezIDForeverFarm(
     sp.set([admin]), 
@@ -91,4 +96,5 @@ def test():
   scene = sp.test_scenario()
   farm, stakeToken, daoToken, rewardToken = init(admin, scene)
 
-  
+  transfer(scene, stakeToken, admin, user1, 100)
+  scene += farm.addRewards(100000).run(sender=admin)
