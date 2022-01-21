@@ -47,8 +47,11 @@ class TezIDForeverFarm(sp.Contract):
 
   @sp.private_lambda(with_storage='read-only', with_operations=True, wrap_call=True)
   def getTokenValue(self):
-    tokenValue = self.data.rewardPool / self.data.totalStaked  
-    sp.result(tokenValue)
+    sp.if self.data.totalStaked == 0:
+      sp.result(0)
+    sp.else:
+      tokenValue = self.data.rewardPool / self.data.totalStaked  
+      sp.result(tokenValue)
 
 
   ## Checks
@@ -138,10 +141,17 @@ class TezIDForeverFarm(sp.Contract):
   @sp.entry_point
   def stake(self, amount):
     self.checkNotPaused()
-    self.data.totalStaked += amount
+
     tokenValue = self.getTokenValue()
     rewardTokenPaymentRequired = tokenValue * amount
+    self.data.totalStaked += amount 
     self.data.rewardPool += rewardTokenPaymentRequired 
+
+#    sp.trace(sp.sender)
+#    sp.trace(self.data.totalStaked)
+#    sp.trace(self.data.rewardPool)
+#    sp.trace(tokenValue)
+#    sp.trace(rewardTokenPaymentRequired)
 
     # Claim stakeTokens
     self.TransferTokens(sp.record(
@@ -175,10 +185,18 @@ class TezIDForeverFarm(sp.Contract):
   @sp.entry_point
   def exit(self, amount):
     self.checkNotPaused()
-    self.data.totalStaked = sp.as_nat(self.data.totalStaked - amount, 'Negative number')
+
     tokenValue = self.getTokenValue()
     rewardTokenPayment = tokenValue * amount
+    self.data.totalStaked = sp.as_nat(self.data.totalStaked - amount, 'Negative number')
     self.data.rewardPool = sp.as_nat(self.data.rewardPool - rewardTokenPayment, 'Negative number')
+
+#    sp.trace('--exit--')
+#    sp.trace(sp.sender)
+#    sp.trace(self.data.totalStaked)
+#    sp.trace(self.data.rewardPool)
+#    sp.trace(tokenValue)
+#    sp.trace(rewardTokenPayment)
 
     # Return stakeToken
     self.TransferTokens(sp.record(
