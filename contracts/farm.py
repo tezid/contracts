@@ -50,7 +50,7 @@ class TezIDForeverFarm(sp.Contract):
     sp.if self.data.totalStaked == 0:
       sp.result(0)
     sp.else:
-      tokenValue = self.data.rewardPool / self.data.totalStaked  
+      tokenValue = self.data.rewardPool // self.data.totalStaked  
       sp.result(tokenValue)
 
 
@@ -142,6 +142,8 @@ class TezIDForeverFarm(sp.Contract):
   def stake(self, amount):
     self.checkNotPaused()
 
+    ## Cannot allow error case with stake3 (rewardPool < totalStaked)
+
     tokenValue = self.getTokenValue()
     rewardTokenPaymentRequired = tokenValue * amount
     self.data.totalStaked += amount 
@@ -188,8 +190,8 @@ class TezIDForeverFarm(sp.Contract):
 
     tokenValue = self.getTokenValue()
     rewardTokenPayment = tokenValue * amount
-    self.data.totalStaked = sp.as_nat(self.data.totalStaked - amount, 'Negative number')
-    self.data.rewardPool = sp.as_nat(self.data.rewardPool - rewardTokenPayment, 'Negative number')
+    self.data.totalStaked = sp.as_nat(self.data.totalStaked - amount, 'Negative totalStaked')
+    self.data.rewardPool = sp.as_nat(self.data.rewardPool - rewardTokenPayment, 'Negative rewardPool')
 
 #    sp.trace('--exit--')
 #    sp.trace(sp.sender)
