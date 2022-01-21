@@ -135,9 +135,6 @@ def test():
   scene.verify(farm.data.rewardPool == 1000)
 
   # User2 stakes (reward tokens are now required)
-  operator(scene, daoToken, user2, farm.address)
-  operator(scene, stakeToken, user2, farm.address)
-  operator(scene, rewardToken, user2, farm.address)
   transfer(scene, rewardToken, admin, user2, 50)
   scene += farm.stake(50).run(sender=user2, valid=False, exception='FA2_INSUFFICIENT_BALANCE')
   transfer(scene, rewardToken, admin, user2, 450)
@@ -176,4 +173,59 @@ def test():
   scene.verify(farm.data.rewardPool == 0)
   scene.verify(farm.data.totalStaked == 0)
 
-  scene += farm.stake(100).run(sender=user1)
+#@sp.add_target(name = "Farm Complex", kind='complex')
+#def test():
+#  admin = sp.address("tz1-admin")
+#  user1 = sp.address("tz1-user-1")
+#  user2 = sp.address("tz1-user-2")
+#  user3 = sp.address("tz1-user-3")
+#  user1Amount = 1333
+#  user2Amount = 44
+#  user3Amount = 27
+#
+#  scene = sp.test_scenario()
+#  farm, stakeToken, daoToken, rewardToken = init(admin, scene)
+#
+#  # Users gets some stakeTokens
+#
+#  transfer(scene, stakeToken, admin, user1, user1Amount)
+#  transfer(scene, stakeToken, admin, user2, user2Amount)
+#  transfer(scene, stakeToken, admin, user2, user3Amount)
+#
+#  # Users set farm as operator
+#  operator(scene, daoToken, user1, farm.address)
+#  operator(scene, stakeToken, user1, farm.address)
+#  operator(scene, rewardToken, user1, farm.address)
+#  operator(scene, daoToken, user2, farm.address)
+#  operator(scene, stakeToken, user2, farm.address)
+#  operator(scene, rewardToken, user2, farm.address)
+#  operator(scene, daoToken, user3, farm.address)
+#  operator(scene, stakeToken, user3, farm.address)
+#  operator(scene, rewardToken, user3, farm.address)
+#  # Admin set farm as operator for rewardTokens
+#  operator(scene, rewardToken, admin, farm.address) 
+#
+#  # User1 stakes (since no rewards yet, only stakeToken required)
+#  scene += farm.stake(user1Amount).run(sender=user1)
+#  scene += farm.stake(user2Amount).run(sender=user2)
+#
+#  # Admin adds some rewards
+#  scene += farm.addRewards(1000).run(sender=admin)
+#  scene.verify(farm.data.rewardPool == 1000)
+#
+#  # User2 exits half 
+#  scene += farm.exit(user2Amount/2).run(sender=user2)
+#  # User3 stakes all
+#  scene += farm.stake(user3Amount).run(sender=user3)
+#
+#  # Admin adds some more rewards
+#  scene += farm.addRewards(1371).run(sender=admin)
+#
+#  # Users exits 
+#  scene += farm.exit(user1Amount).run(sender=user1)
+#  scene += farm.exit(user2Amount/2).run(sender=user2)
+#  scene += farm.exit(user3Amount).run(sender=user3)
+#
+#  # Farm is reset
+#  scene.verify(farm.data.rewardPool == 0)
+#  scene.verify(farm.data.totalStaked == 0)
