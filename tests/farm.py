@@ -125,10 +125,12 @@ def test():
   operator(scene, rewardToken, admin, farm.address) 
 
   # User1 stakes (since no rewards yet, only stakeToken required)
+  scene += farm.toggleBootstrap(True).run(sender=admin)
   scene += farm.stake(100).run(sender=user1)
   scene.verify(farm.data.totalStaked == 100)
   scene.verify(daoToken.data.ledger[user1].balance == 100)
   scene.verify(stakeToken.data.ledger[user1].balance == 0)
+  scene += farm.toggleBootstrap(False).run(sender=admin)
 
   # Admin adds some rewards
   scene += farm.addRewards(1000).run(sender=admin)
@@ -173,7 +175,7 @@ def test():
   scene.verify(farm.data.rewardPool == 0)
   scene.verify(farm.data.totalStaked == 0)
 
-@sp.add_target(name = "Farm Complex", kind='complex')
+@sp.add_target(name = "Farm Complex", kind=allKind)
 def test():
   admin = sp.address("tz1-admin")
   user1 = sp.address("tz1-user-1")
@@ -208,9 +210,11 @@ def test():
   transfer(scene, rewardToken, admin, user3, 500)
 
   # User1 stakes (since no rewards yet, only stakeToken required)
+  scene += farm.toggleBootstrap(True).run(sender=admin)
   scene += farm.stake(user1Amount).run(sender=user1)
   scene += farm.stake(user2Amount).run(sender=user2)
   scene.verify(farm.data.totalStaked == (user1Amount + user2Amount))
+  scene += farm.toggleBootstrap(False).run(sender=admin)
 
   # Admin adds some rewards
   scene += farm.addRewards(10000).run(sender=admin)
@@ -232,4 +236,22 @@ def test():
   # Farm is reset
   scene.verify(farm.data.rewardPool >= 0) # Because of eucludian division we might have a small remainder in the rewardPool
   scene.verify(farm.data.totalStaked == 0)
-  ## TODO: Check that we can empty rewardPool ... ? Reset function?
+
+  # Admin can send remainig rewards and reset pool
+  scene.verify(farm.data.rewardPool == 7)
+  scene += farm.adminTransferTokens(sp.record(
+    sender=farm.address, 
+    receiver=admin, 
+    tokenAddress=rewardToken.address, 
+    token_ids=[0], 
+    amount=8
+  )).run(sender=admin, valid=False, exception='FA2_INSUFFICIENT_BALANCE')
+  scene += farm.adminTransferTokens(sp.record(
+    sender=farm.address, 
+    receiver=admin, 
+    tokenAddress=rewardToken.address, 
+    token_ids=[0], 
+    amount=7
+  )).run(sender=admin)
+  scene += farm.setRewardPool(0).run(sender=admin)
+  scene.verify(farm.data.rewardPool == 0)

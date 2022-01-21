@@ -13,6 +13,7 @@ class TezIDForeverFarm(sp.Contract):
       admins = admins, 
       metadata = metadata,
       paused = False,
+      bootstrapping = False,
       totalStaked = 0,
       rewardPool = 0,
       tokens = sp.map({}),
@@ -83,6 +84,16 @@ class TezIDForeverFarm(sp.Contract):
   def delAdmin(self, admin):
     self.checkAdmin()
     self.data.admins.remove(admin)
+
+  @sp.entry_point
+  def tooglePause(self, paused):
+    self.checkAdmin()
+    self.data.paused = paused
+
+  @sp.entry_point
+  def toggleBootstrap(self, bootstrapping):
+    self.checkAdmin()
+    self.data.bootstrapping = bootstrapping 
       
   @sp.entry_point
   def setBaker(self, new_delegate):
@@ -119,6 +130,16 @@ class TezIDForeverFarm(sp.Contract):
     sp.set_type(burnAddress, sp.TAddress)
     self.data.burnAddress = sp.some(burnAddress)
 
+  @sp.entry_point
+  def setRewardPool(self, rewardPool):
+    self.checkAdmin()
+    self.data.rewardPool = rewardPool
+
+  @sp.entry_point
+  def setTotalStaked(self, totalStaked):
+    self.checkAdmin()
+    self.data.totalStaked = totalStaked
+
   ## Reward 
   #
 
@@ -146,8 +167,8 @@ class TezIDForeverFarm(sp.Contract):
     #  We cannot allow more stake than rewards since this will mess up arithmetic.
     #  This will never happen in a real world use-case, but we protect against it.
     #  However, when we are bootstrapping we want to allow staking while rewardPool = 0
-    sp.if self.data.rewardPool > 0:
-      sp.if self.data.rewardPool <= (self.data.totalStaked + amount):
+    sp.if self.data.bootstrapping == False:
+      sp.if self.data.rewardPool < (self.data.totalStaked + amount):
         sp.failwith('RewardPool too small')
 
     tokenValue = self.getTokenValue()
