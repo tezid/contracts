@@ -113,31 +113,67 @@ def test():
   scene.verify(stakeToken.data.ledger[user1].balance == 100)
   scene.verify(stakeToken.data.ledger[user2].balance == 50)
 
-  # User1 stakes (since no rewards yet, only stakeToken required)
+  # User 1 and User 2 both set farm as operator
+  operator(scene, daoToken, user1, farm.address)
+  operator(scene, stakeToken, user1, farm.address)
+  operator(scene, rewardToken, user1, farm.address)
+  operator(scene, daoToken, user2, farm.address)
+  operator(scene, stakeToken, user2, farm.address)
+  operator(scene, rewardToken, user2, farm.address)
 
-  operator(scene, stakeToken, user1, farm.address) 
+  # Admin set farm as operator for rewardTokens
+  operator(scene, rewardToken, admin, farm.address) 
+
+  # User1 stakes (since no rewards yet, only stakeToken required)
   scene += farm.stake(100).run(sender=user1)
   scene.verify(farm.data.totalStaked == 100)
   scene.verify(daoToken.data.ledger[user1].balance == 100)
   scene.verify(stakeToken.data.ledger[user1].balance == 0)
 
   # Admin adds some rewards
-
-  operator(scene, rewardToken, admin, farm.address) 
   scene += farm.addRewards(1000).run(sender=admin)
   scene.verify(farm.data.rewardPool == 1000)
 
   # User2 stakes (reward tokens are now required)
-  transfer(scene, rewardToken, admin, user2, 50)
+  operator(scene, daoToken, user2, farm.address)
   operator(scene, stakeToken, user2, farm.address)
   operator(scene, rewardToken, user2, farm.address)
+  transfer(scene, rewardToken, admin, user2, 50)
   scene += farm.stake(50).run(sender=user2, valid=False, exception='FA2_INSUFFICIENT_BALANCE')
-  transfer(scene, rewardToken, admin, user2, 250)
+  transfer(scene, rewardToken, admin, user2, 450)
   scene += farm.stake(50).run(sender=user2)
   scene.verify(farm.data.totalStaked == 150)
+  scene.verify(farm.data.rewardPool == 1500)
 
-  # User 2 exist
-  operator(scene, daoToken, user2, farm.address)
-  scene += farm.exit(50).run(sender=user2)
+  # User 2 exits half
+  scene += farm.exit(25).run(sender=user2)
+  scene.verify(stakeToken.data.ledger[user2].balance == 25)
+  scene.verify(daoToken.data.ledger[user2].balance == 25)
+  scene.verify(rewardToken.data.ledger[user2].balance == 250)
+  scene.verify(farm.data.totalStaked == 125)
+  scene.verify(farm.data.rewardPool == 1250)
 
-  # TODO: Verify state after user2 exit
+  # User 2 cannot exit more than stake
+  scene += farm.exit(30).run(sender=user2, valid=False, exception='FA2_INSUFFICIENT_BALANCE')
+
+  # Admin adds some more rewards
+  scene += farm.addRewards(1000).run(sender=admin)
+  scene.verify(farm.data.rewardPool == 2250)
+
+  # User 1 exits
+  scene += farm.exit(100).run(sender=user1)
+  scene.verify(daoToken.data.ledger[user1].balance == 0)
+  scene.verify(stakeToken.data.ledger[user1].balance == 100)
+  scene.verify(rewardToken.data.ledger[user1].balance == 1800) # Total rewards for user1 = 1800
+
+  # User 2 exits rest
+  scene += farm.exit(25).run(sender=user2)
+  scene.verify(daoToken.data.ledger[user2].balance == 0)
+  scene.verify(stakeToken.data.ledger[user2].balance == 50)
+  scene.verify(rewardToken.data.ledger[user2].balance == 700) # Total rewards for user2 = 700-500 = 200
+
+  # Farm is reset
+  scene.verify(farm.data.rewardPool == 0)
+  scene.verify(farm.data.totalStaked == 0)
+
+  scene += farm.stake(100).run(sender=user1)
