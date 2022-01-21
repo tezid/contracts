@@ -47,12 +47,11 @@ class TezIDForeverFarm(sp.Contract):
 
   @sp.private_lambda(with_storage='read-only', with_operations=True, wrap_call=True)
   def getTokenValue(self):
-    sp.if self.data.totalStaked == 0:
-      sp.result(0)
-    sp.else:
-      tokenValue = self.data.rewardPool // self.data.totalStaked  
-      sp.result(tokenValue)
-
+    res = sp.local('res', 0)
+    sp.if self.data.totalStaked > 0:
+      sp.if self.data.rewardPool >= self.data.totalStaked:
+        res.value = self.data.rewardPool // self.data.totalStaked
+    sp.result(res.value)
 
   ## Checks
   #
@@ -142,13 +141,21 @@ class TezIDForeverFarm(sp.Contract):
   def stake(self, amount):
     self.checkNotPaused()
 
-    ## Cannot allow error case with stake3 (rewardPool < totalStaked)
+    ## In case we have started adding rewards:
+    #  --
+    #  We cannot allow more stake than rewards since this will mess up arithmetic.
+    #  This will never happen in a real world use-case, but we protect against it.
+    #  However, when we are bootstrapping we want to allow staking while rewardPool = 0
+    sp.if self.data.rewardPool > 0:
+      sp.if self.data.rewardPool <= (self.data.totalStaked + amount):
+        sp.failwith('RewardPool too small')
 
     tokenValue = self.getTokenValue()
     rewardTokenPaymentRequired = tokenValue * amount
     self.data.totalStaked += amount 
     self.data.rewardPool += rewardTokenPaymentRequired 
 
+#    sp.trace('--stake--')
 #    sp.trace(sp.sender)
 #    sp.trace(self.data.totalStaked)
 #    sp.trace(self.data.rewardPool)

@@ -232,3 +232,4 @@ def test():
   # Farm is reset
   scene.verify(farm.data.rewardPool >= 0) # Because of eucludian division we might have a small remainder in the rewardPool
   scene.verify(farm.data.totalStaked == 0)
+  ## TODO: Check that we can empty rewardPool ... ? Reset function?
