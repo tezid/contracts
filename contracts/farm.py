@@ -111,6 +111,12 @@ class TezIDForeverFarm(sp.Contract):
       token_id = tokenId
     )
 
+  @sp.entry_point
+  def setBurnAddress(self, burnAddress):
+    self.checkAdmin()
+    sp.set_type(burnAddress, sp.TAddress)
+    self.data.burnAddress = sp.some(burnAddress)
+
   ## Reward 
   #
 
@@ -154,47 +160,48 @@ class TezIDForeverFarm(sp.Contract):
       amount=amount
     ))
     # Claim rewardTokens
-    self.TransferTokens(sp.record(
-      sender=sp.sender, 
-      receiver=sp.self_address, 
-      token=self.data.tokens['reward'].address,
-      ids=[self.data.tokens['reward'].token_id],
-      amount=rewardTokenPaymentRequired
-    ))
+    sp.if rewardTokenPaymentRequired > 0:
+      self.TransferTokens(sp.record(
+        sender=sp.sender, 
+        receiver=sp.self_address, 
+        token=self.data.tokens['reward'].address,
+        ids=[self.data.tokens['reward'].token_id],
+        amount=rewardTokenPaymentRequired
+      ))
 
   ## Exit
   #
 
-#  @sp.entry_point
-#  def exit(self, amount):
-#    self.checkNotPaused()
-#    self.data.totalStaked = sp.as_nat(self.data.totalStaked - amount, 'Negative number')
-#    tokenValue = self.getTokenValue()
-#    rewardTokenPayment = tokenValue * amount
-#    self.data.rewardPool = sp.as_nat(self.data.rewardPool - rewardTokenPayment, 'Negative number')
-#
-#    # Return stakeToken
-#    self.TransferTokens(sp.record(
-#      sender=sp.self_address, 
-#      receiver=sp.sender, 
-#      token=self.data.stakeToken.address.open_some('stakeToken address not set'),
-#      ids=[self.data.stakeToken.token_id],
-#      amount=amount
-#    ))
-#    # Burn daoTokens
-#    self.TransferTokens(sp.record(
-#      sender=sp.sender, 
-#      receiver=self.data.burnAddress.open_some('brunAddress not set'), 
-#      token=self.data.daoToken.address.open_some('daoToken address not set'),
-#      ids=[self.data.daoToken.token_id],
-#      amount=amount
-#    ))
-#    # Return rewardTokens
-#    self.TransferTokens(sp.record(
-#      sender=sp.self_address, 
-#      receiver=sp.sender, 
-#      token=self.data.rewardToken.address.open_some('rewardToken address not set'),
-#      ids=[self.data.rewardToken.token_id],
-#      amount=rewardTokenPayment
-#    ))
-#
+  @sp.entry_point
+  def exit(self, amount):
+    self.checkNotPaused()
+    self.data.totalStaked = sp.as_nat(self.data.totalStaked - amount, 'Negative number')
+    tokenValue = self.getTokenValue()
+    rewardTokenPayment = tokenValue * amount
+    self.data.rewardPool = sp.as_nat(self.data.rewardPool - rewardTokenPayment, 'Negative number')
+
+    # Return stakeToken
+    self.TransferTokens(sp.record(
+      sender=sp.self_address, 
+      receiver=sp.sender, 
+      token=self.data.tokens['stake'].address,
+      ids=[self.data.tokens['stake'].token_id],
+      amount=amount
+    ))
+    # Burn daoTokens
+    self.TransferTokens(sp.record(
+      sender=sp.sender, 
+      receiver=self.data.burnAddress.open_some('burnAddress not set'), 
+      token=self.data.tokens['dao'].address,
+      ids=[self.data.tokens['dao'].token_id],
+      amount=amount
+    ))
+    # Return rewardTokens
+    self.TransferTokens(sp.record(
+      sender=sp.self_address, 
+      receiver=sp.sender, 
+      token=self.data.tokens['reward'].address,
+      ids=[self.data.tokens['reward'].token_id],
+      amount=rewardTokenPayment
+    ))
+

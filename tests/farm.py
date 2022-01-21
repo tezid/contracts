@@ -28,6 +28,15 @@ def transfer(scene, token, sender, receiver, amount, token_id=0):
   arg = [sp.record(from_=sender, txs=txs)]
   scene += token.transfer(arg).run(sender=sender)
 
+def operator(scene, token, owner, operator, token_id=0, operation='add_operator'):
+  scene += token.update_operators([
+    sp.variant(operation, sp.record(
+      owner = owner,
+      operator = operator,
+      token_id = token_id
+    ))
+  ]).run(sender = owner)
+
 def init(admin, scene):
   farm = Farm.TezIDForeverFarm(
     sp.set([admin]), 
@@ -78,11 +87,12 @@ def init(admin, scene):
 
   mint(scene, admin, stakeToken, 0, admin, 1000000, decimals=8, name='IDZ/XTZ LP', symbol='IDZLP')
   mint(scene, admin, rewardToken, 0, admin, 1000000, decimals=8, name='TezID Token', symbol='IDZ')
-  mint(scene, admin, daoToken, 0, admin, 1000000, decimals=8, name='TezIDAO Token', symbol='xIDZ')
+  mint(scene, admin, daoToken, 0, farm.address, 1000000, decimals=8, name='TezIDAO Token', symbol='xIDZ')
 
   scene += farm.setToken(sp.record(tokenType="stake", tokenAddress=stakeToken.address, tokenId=0)).run(sender=admin)
   scene += farm.setToken(sp.record(tokenType="dao", tokenAddress=daoToken.address, tokenId=0)).run(sender=admin)
   scene += farm.setToken(sp.record(tokenType="reward", tokenAddress=rewardToken.address, tokenId=0)).run(sender=admin)
+  scene += farm.setBurnAddress(sp.address('tz1-burn')).run(sender=admin)
 
   return farm, stakeToken, daoToken, rewardToken
 
@@ -96,5 +106,38 @@ def test():
   scene = sp.test_scenario()
   farm, stakeToken, daoToken, rewardToken = init(admin, scene)
 
+  # User1 and User2 gets some stakeTokens
+
   transfer(scene, stakeToken, admin, user1, 100)
-  scene += farm.addRewards(100000).run(sender=admin)
+  transfer(scene, stakeToken, admin, user2, 50)
+  scene.verify(stakeToken.data.ledger[user1].balance == 100)
+  scene.verify(stakeToken.data.ledger[user2].balance == 50)
+
+  # User1 stakes (since no rewards yet, only stakeToken required)
+
+  operator(scene, stakeToken, user1, farm.address) 
+  scene += farm.stake(100).run(sender=user1)
+  scene.verify(farm.data.totalStaked == 100)
+  scene.verify(daoToken.data.ledger[user1].balance == 100)
+  scene.verify(stakeToken.data.ledger[user1].balance == 0)
+
+  # Admin adds some rewards
+
+  operator(scene, rewardToken, admin, farm.address) 
+  scene += farm.addRewards(1000).run(sender=admin)
+  scene.verify(farm.data.rewardPool == 1000)
+
+  # User2 stakes (reward tokens are now required)
+  transfer(scene, rewardToken, admin, user2, 50)
+  operator(scene, stakeToken, user2, farm.address)
+  operator(scene, rewardToken, user2, farm.address)
+  scene += farm.stake(50).run(sender=user2, valid=False, exception='FA2_INSUFFICIENT_BALANCE')
+  transfer(scene, rewardToken, admin, user2, 250)
+  scene += farm.stake(50).run(sender=user2)
+  scene.verify(farm.data.totalStaked == 150)
+
+  # User 2 exist
+  operator(scene, daoToken, user2, farm.address)
+  scene += farm.exit(50).run(sender=user2)
+
+  # TODO: Verify state after user2 exit
