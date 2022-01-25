@@ -4,6 +4,9 @@ import smartpy as sp
 cwd = os.getcwd()
 Types = sp.io.import_script_from_url("file://%s/contracts/types.py" % cwd)
 
+# TODO: Mint the daoTokens
+# TODO: Mint require admin? Add setTokenAdmin
+
 ## TezID Forever Farm
 #
 
@@ -13,9 +16,9 @@ class TezIDForeverFarm(sp.Contract):
       admins = admins, 
       metadata = metadata,
       paused = False,
-      bootstrapping = False,
       totalStaked = 0,
       rewardPool = 0,
+      tokenValue = 0,
       tokens = sp.map({}),
       burnAddress = sp.none
     )
@@ -45,14 +48,6 @@ class TezIDForeverFarm(sp.Contract):
           entry_point='transfer').open_some()
 
       sp.transfer(arg, sp.mutez(0), transferHandle)
-
-  @sp.private_lambda(with_storage='read-only', with_operations=True, wrap_call=True)
-  def getTokenValue(self):
-    res = sp.local('res', 0)
-    sp.if self.data.totalStaked > 0:
-      sp.if self.data.rewardPool >= self.data.totalStaked:
-        res.value = self.data.rewardPool // self.data.totalStaked
-    sp.result(res.value)
 
   ## Checks
   #
@@ -90,11 +85,6 @@ class TezIDForeverFarm(sp.Contract):
     self.checkAdmin()
     self.data.paused = paused
 
-  @sp.entry_point
-  def toggleBootstrap(self, bootstrapping):
-    self.checkAdmin()
-    self.data.bootstrapping = bootstrapping 
-      
   @sp.entry_point
   def setBaker(self, new_delegate):
     self.checkAdmin()
@@ -136,6 +126,11 @@ class TezIDForeverFarm(sp.Contract):
     self.data.rewardPool = rewardPool
 
   @sp.entry_point
+  def setTokenValue(self, tokenValue):
+    self.checkAdmin()
+    self.data.tokenValue = tokenValue 
+
+  @sp.entry_point
   def setTotalStaked(self, totalStaked):
     self.checkAdmin()
     self.data.totalStaked = totalStaked
@@ -154,6 +149,10 @@ class TezIDForeverFarm(sp.Contract):
       amount=amount
     ))
     self.data.rewardPool += amount
+    sp.if self.data.totalStaked == 0:
+      self.data.tokenValue = 0
+    sp.else:
+      self.data.tokenValue = self.data.rewardPool // self.data.totalStaked
 
   ## Stake
   #
@@ -162,28 +161,17 @@ class TezIDForeverFarm(sp.Contract):
   def stake(self, amount):
     self.checkNotPaused()
 
-    ## In case we have started adding rewards:
-    #  --
-    #  We cannot allow more stake than rewards since this will mess up arithmetic.
-    #  This will never happen in a real world use-case, but we protect against it.
-    #  However, when we are bootstrapping we want to allow staking while rewardPool = 0
-    sp.if self.data.bootstrapping == False:
-      sp.if self.data.rewardPool < (self.data.totalStaked + amount):
-        sp.failwith('RewardPool too small')
-
-    tokenValue = self.getTokenValue()
-    rewardTokenPaymentRequired = tokenValue * amount
+    rewards = self.data.tokenValue * amount
     self.data.totalStaked += amount 
-    self.data.rewardPool += rewardTokenPaymentRequired 
+    self.data.rewardPool += rewards
 
-#    sp.trace('--stake--')
-#    sp.trace(sp.sender)
-#    sp.trace(self.data.totalStaked)
-#    sp.trace(self.data.rewardPool)
-#    sp.trace(tokenValue)
-#    sp.trace(rewardTokenPaymentRequired)
+    #sp.trace('--stake--')
+    #sp.trace(sp.sender)
+    #sp.trace(amount)
+    #sp.trace(rewards)
+    #sp.trace(self.data.rewardPool)
 
-    # Claim stakeTokens
+    # stakeTokens - sender -> contract
     self.TransferTokens(sp.record(
       sender=sp.sender, 
       receiver=sp.self_address, 
@@ -191,7 +179,7 @@ class TezIDForeverFarm(sp.Contract):
       ids=[self.data.tokens['stake'].token_id],
       amount=amount
     ))
-    # Return daoTokens
+    # daoTokens - contract -> sender
     self.TransferTokens(sp.record(
       sender=sp.self_address, 
       receiver=sp.sender, 
@@ -199,14 +187,14 @@ class TezIDForeverFarm(sp.Contract):
       ids=[self.data.tokens['dao'].token_id],
       amount=amount
     ))
-    # Claim rewardTokens
-    sp.if rewardTokenPaymentRequired > 0:
+    # rewardTokens - sender -> contract
+    sp.if rewards > 0:
       self.TransferTokens(sp.record(
         sender=sp.sender, 
         receiver=sp.self_address, 
         token=self.data.tokens['reward'].address,
         ids=[self.data.tokens['reward'].token_id],
-        amount=rewardTokenPaymentRequired
+        amount=rewards
       ))
 
   ## Exit
@@ -216,19 +204,17 @@ class TezIDForeverFarm(sp.Contract):
   def exit(self, amount):
     self.checkNotPaused()
 
-    tokenValue = self.getTokenValue()
-    rewardTokenPayment = tokenValue * amount
+    rewards = self.data.tokenValue * amount
     self.data.totalStaked = sp.as_nat(self.data.totalStaked - amount, 'Negative totalStaked')
-    self.data.rewardPool = sp.as_nat(self.data.rewardPool - rewardTokenPayment, 'Negative rewardPool')
+    self.data.rewardPool = sp.as_nat(self.data.rewardPool - rewards, 'Negative rewardPool')
 
-#    sp.trace('--exit--')
-#    sp.trace(sp.sender)
-#    sp.trace(self.data.totalStaked)
-#    sp.trace(self.data.rewardPool)
-#    sp.trace(tokenValue)
-#    sp.trace(rewardTokenPayment)
+    #sp.trace('--exit--')
+    #sp.trace(sp.sender)
+    #sp.trace(amount)
+    #sp.trace(rewards)
+    #sp.trace(self.data.rewardPool)
 
-    # Return stakeToken
+    # stakeToken - contract -> sender
     self.TransferTokens(sp.record(
       sender=sp.self_address, 
       receiver=sp.sender, 
@@ -236,7 +222,7 @@ class TezIDForeverFarm(sp.Contract):
       ids=[self.data.tokens['stake'].token_id],
       amount=amount
     ))
-    # Burn daoTokens
+    # daoTokens - sender -> burn
     self.TransferTokens(sp.record(
       sender=sp.sender, 
       receiver=self.data.burnAddress.open_some('burnAddress not set'), 
@@ -244,12 +230,12 @@ class TezIDForeverFarm(sp.Contract):
       ids=[self.data.tokens['dao'].token_id],
       amount=amount
     ))
-    # Return rewardTokens
+    # rewardTokens - contract -> sender
     self.TransferTokens(sp.record(
       sender=sp.self_address, 
       receiver=sp.sender, 
       token=self.data.tokens['reward'].address,
       ids=[self.data.tokens['reward'].token_id],
-      amount=rewardTokenPayment
+      amount=rewards
     ))
 
