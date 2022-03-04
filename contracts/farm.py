@@ -22,11 +22,11 @@ class TezIDForeverFarm(sp.Contract):
       tokenValue = 0,
       tokens = sp.map({}),
       burnAddress = sp.none,
-      xidz_metadata = sp.map({
-        'name': bytes_of_string('TezIDAO'),
+      xidzMetadata = sp.map({
+        'name': bytes_of_string('TezIDAO xIDZ'),
         'symbol': bytes_of_string('xIDZ'),
         'decimals': bytes_of_string('8'),
-        'description': bytes_of_string('TezID DAO Token'),
+        'description': bytes_of_string('TezID xFarm proof token'),
         'thumbnailUri': bytes_of_string('https://tezid.net/xidz.png'),
         'shouldPreferSymbol': bytes_of_string('true')
       })
@@ -63,7 +63,7 @@ class TezIDForeverFarm(sp.Contract):
     arg = sp.record(
       address = params.receiver,
       amount = params.amount,
-      metadata = self.data.xidz_metadata,
+      metadata = self.data.xidzMetadata,
       token_id = params.token_id
     )
     mintHandle = sp.contract(
