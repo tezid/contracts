@@ -4,8 +4,9 @@ import smartpy as sp
 cwd = os.getcwd()
 Types = sp.io.import_script_from_url("file://%s/contracts/types.py" % cwd)
 
-# TODO: Mint the daoTokens
-# TODO: Mint require admin? Add setTokenAdmin
+def bytes_of_string(s):
+  b = sp.pack(s)
+  return sp.slice(b, 6, sp.as_nat(sp.len(b) - 6)).open_some("Could not get bytes of string")
 
 ## TezID Forever Farm
 #
@@ -20,7 +21,15 @@ class TezIDForeverFarm(sp.Contract):
       rewardPool = 0,
       tokenValue = 0,
       tokens = sp.map({}),
-      burnAddress = sp.none
+      burnAddress = sp.none,
+      xidz_metadata = sp.map({
+        'name': bytes_of_string('TezIDAO'),
+        'symbol': bytes_of_string('xIDZ'),
+        'decimals': bytes_of_string('8'),
+        'description': bytes_of_string('TezID DAO Token'),
+        'thumbnailUri': bytes_of_string('https://tezid.net/xidz.png'),
+        'shouldPreferSymbol': bytes_of_string('true')
+      })
     )
 
   ## Utility Functions
@@ -48,6 +57,20 @@ class TezIDForeverFarm(sp.Contract):
           entry_point='transfer').open_some()
 
       sp.transfer(arg, sp.mutez(0), transferHandle)
+
+  @sp.private_lambda(with_storage='read-only', with_operations=True, wrap_call=True)
+  def MintTokens(self, params):
+    arg = sp.record(
+      address = params.receiver,
+      amount = params.amount,
+      metadata = self.data.xidz_metadata,
+      token_id = params.token_id
+    )
+    mintHandle = sp.contract(
+      sp.TRecord(address=sp.TAddress, amount=sp.TNat, metadata=sp.TMap(sp.TString, sp.TBytes), token_id=sp.TNat),
+      params.token_address,
+      entry_point='mint').open_some('No such entrypoint')
+    sp.transfer(arg, sp.mutez(0), mintHandle)
 
   ## Checks
   #
@@ -135,6 +158,12 @@ class TezIDForeverFarm(sp.Contract):
     self.checkAdmin()
     self.data.totalStaked = totalStaked
 
+  @sp.entry_point
+  def setTokenAdmin(self, tokenAddress, admin):
+    self.checkAdmin()
+    c = sp.contract(sp.TAddress, tokenAddress, entry_point="set_administrator").open_some()
+    sp.transfer(admin, sp.mutez(0), c)
+
   ## Reward 
   #
 
@@ -180,12 +209,11 @@ class TezIDForeverFarm(sp.Contract):
       amount=amount
     ))
     # daoTokens - contract -> sender
-    self.TransferTokens(sp.record(
-      sender=sp.self_address, 
-      receiver=sp.sender, 
-      token=self.data.tokens['dao'].address,
-      ids=[self.data.tokens['dao'].token_id],
-      amount=amount
+    self.MintTokens(sp.record(
+      amount=amount,
+      receiver=sp.sender,
+      token_id=self.data.tokens['dao'].token_id,
+      token_address=self.data.tokens['dao'].address,
     ))
     # rewardTokens - sender -> contract
     sp.if rewards > 0:

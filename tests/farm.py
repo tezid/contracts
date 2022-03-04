@@ -63,7 +63,7 @@ def init(admin, scene):
 
   daoToken = Tokens.FA2Token(
     Tokens.TOKEN_config,
-    admin = admin, 
+    admin = farm.address, 
     metadata = sp.big_map(
       {
         "": sp.utils.bytes_of_string("tezos-storage:content"),
@@ -87,7 +87,6 @@ def init(admin, scene):
 
   mint(scene, admin, stakeToken, 0, admin, 1000000, decimals=8, name='IDZ/XTZ LP', symbol='IDZLP')
   mint(scene, admin, rewardToken, 0, admin, 1000000, decimals=8, name='TezID Token', symbol='IDZ')
-  mint(scene, admin, daoToken, 0, farm.address, 1000000, decimals=8, name='TezIDAO Token', symbol='xIDZ')
 
   scene += farm.setToken(sp.record(tokenType="stake", tokenAddress=stakeToken.address, tokenId=0)).run(sender=admin)
   scene += farm.setToken(sp.record(tokenType="dao", tokenAddress=daoToken.address, tokenId=0)).run(sender=admin)
@@ -96,6 +95,20 @@ def init(admin, scene):
 
   return farm, stakeToken, daoToken, rewardToken
 
+@sp.add_target(name = "Admin", kind=allKind)
+def test():
+  admin = sp.address("tz1-admin")
+  user1 = sp.address("tz1-user-1")
+  user2 = sp.address("tz1-user-2")
+
+  scene = sp.test_scenario()
+  farm, stakeToken, daoToken, rewardToken = init(admin, scene)
+
+  # Farm admin can set daoToken admin
+
+  scene.verify(daoToken.data.administrator == farm.address)
+  scene += farm.setTokenAdmin(sp.record(tokenAddress=daoToken.address, admin=admin)).run(sender=admin)
+  scene.verify(daoToken.data.administrator == admin)
 
 @sp.add_target(name = "Farm", kind=allKind)
 def test():
