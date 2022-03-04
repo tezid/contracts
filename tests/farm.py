@@ -62,7 +62,7 @@ def init(admin, scene):
   scene += stakeToken
 
   daoToken = Tokens.FA2Token(
-    Tokens.TOKEN_config,
+    Tokens.TezIDAO_TOKEN_config,
     admin = farm.address, 
     metadata = sp.big_map(
       {
@@ -140,7 +140,7 @@ def test():
   # User1 stakes (since no rewards yet, only stakeToken required)
   scene += farm.stake(100).run(sender=user1)
   scene.verify(farm.data.totalStaked == 100)
-  scene.verify(daoToken.data.ledger[user1].balance == 100)
+  scene.verify(daoToken.data.ledger[(user1, 0)].balance == 100)
   scene.verify(stakeToken.data.ledger[user1].balance == 0)
 
   # Admin adds some rewards
@@ -158,7 +158,7 @@ def test():
   # User 2 exits half
   scene += farm.exit(25).run(sender=user2)
   scene.verify(stakeToken.data.ledger[user2].balance == 25)
-  scene.verify(daoToken.data.ledger[user2].balance == 25)
+  scene.verify(daoToken.data.ledger[(user2, 0)].balance == 25)
   scene.verify(rewardToken.data.ledger[user2].balance == 250)
   scene.verify(farm.data.totalStaked == 125)
   scene.verify(farm.data.rewardPool == 1250)
@@ -172,13 +172,13 @@ def test():
 
   # User 1 exits
   scene += farm.exit(100).run(sender=user1)
-  scene.verify(daoToken.data.ledger[user1].balance == 0)
+  scene.verify(daoToken.data.ledger[(user1, 0)].balance == 0)
   scene.verify(stakeToken.data.ledger[user1].balance == 100)
   scene.verify(rewardToken.data.ledger[user1].balance == 1800) # Total rewards for user1 = 1800
 
   # User 2 exits rest
   scene += farm.exit(25).run(sender=user2)
-  scene.verify(daoToken.data.ledger[user2].balance == 0)
+  scene.verify(daoToken.data.ledger[(user2, 0)].balance == 0)
   scene.verify(stakeToken.data.ledger[user2].balance == 50)
   scene.verify(rewardToken.data.ledger[user2].balance == 700) # Total rewards for user2 = 700-500 = 200
 
