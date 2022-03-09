@@ -25,7 +25,7 @@ class TezIDForeverFarm(sp.Contract):
       xidzMetadata = sp.map({
         'name': bytes_of_string('TezIDAO xIDZ'),
         'symbol': bytes_of_string('xIDZ'),
-        'decimals': bytes_of_string('8'),
+        'decimals': bytes_of_string('6'),
         'description': bytes_of_string('TezID xFarm proof token'),
         'thumbnailUri': bytes_of_string('https://tezid.net/xidz.png'),
         'shouldPreferSymbol': bytes_of_string('true')
