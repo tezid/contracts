@@ -35,6 +35,14 @@ source bin/activate
 spy kind all tests/tezid.py output --html
 ```
 
+## Integration example 
+
+See [here](tests/integrations.py) for integration examples.
+
+```
+spy kind all tests/integrations.py output --html
+```
+
 ## Store API
 
 ### Entrypoints
