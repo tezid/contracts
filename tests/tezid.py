@@ -54,6 +54,12 @@ def test():
   ## Too low fee results in failure
   #
   scenario += ctrl.registerProof('phone').run(sender=user, amount=sp.tez(4), valid=False, exception='Amount too low')
+
+  ## Admin can add a proof for anyone
+  #
+  scenario += ctrl.registerProofAdmin(sp.record(address=user.address, proofType='yolo')).run(sender=admin)
+  scenario.verify(store.data.identities.contains(user.address))
+  scenario.verify(store.data.identities[user.address]['yolo'].verified == False)
   
 @sp.add_target(name = "Verify proof", kind=allKind)
 def test():
@@ -138,17 +144,20 @@ def test():
 
   ## Admin can update cost
   #
-  scenario += ctrl.setCost(sp.tez(10)).run(sender = admin)
-  scenario.verify(ctrl.data.cost == sp.tez(10))
+  scenario += ctrl.setCost(sp.record(proofType='default', cost=sp.tez(10))).run(sender = admin)
+  scenario += ctrl.setCost(sp.record(proofType='phone', cost=sp.tez(9))).run(sender = admin)
+  scenario.verify(ctrl.data.cost['default'] == sp.tez(10))
 
   ## User cannot update cost
   #
-  scenario += ctrl.setCost(sp.tez(1000)).run(sender = user, valid = False)
+  scenario += ctrl.setCost(sp.record(proofType='default', cost=sp.tez(1000))).run(sender = user, valid = False)
 
   ## Need correct amount to register
   #
   scenario += ctrl.registerProof('email').run(sender = user, amount = sp.tez(9), valid = False)
   scenario += ctrl.registerProof('email').run(sender = user, amount = sp.tez(10))
+  scenario += ctrl.registerProof('phone').run(sender = user, amount = sp.tez(8), valid = False)
+  scenario += ctrl.registerProof('phone').run(sender = user, amount = sp.tez(9))
   
 @sp.add_target(name = "Send", kind=allKind)
 def test():
@@ -196,12 +205,12 @@ def test():
 
   ## Admin can update admin (Controller)
   #
-  scenario += ctrl.setAdmin(admin2.address).run(sender = admin)
-  scenario.verify(ctrl.data.admin == admin2.address)
+  scenario += ctrl.addAdmin(admin2.address).run(sender = admin)
+  scenario.verify(ctrl.data.admins.contains(admin2.address))
 
   ## Non-admin cannot update admin (Controller)
   #
-  scenario += ctrl.setAdmin(admin.address).run(sender = admin, valid=False)
+  scenario += ctrl.addAdmin(admin.address).run(sender = user, valid=False)
 
   ## Admin can add and remove admin (Store)
   #
