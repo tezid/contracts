@@ -26,7 +26,7 @@ TezIDStoreMetadata = {
 TezIDControllerMetadata = {
   "name": "TezID Controller",
   "description": "Controller for TezID",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "homepage": "https://tezid.net",
   "authors": ["asbjornenge <asbjorn@tezid.net>"],
   "interfaces": ["TZIP-016"]
