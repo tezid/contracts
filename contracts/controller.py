@@ -3,6 +3,7 @@ import smartpy as sp
 
 cwd = os.getcwd()
 Types = sp.io.import_script_from_url("file://%s/contracts/types.py" % cwd)
+# Types = sp.io.import_script_from_url("https://tezid.infura-ipfs.io/ipfs/QmcwUQmntR9sVvgv2MQRVgEGVM78bXF3Hif9yQop5cgaUo")
 
 ## TezID Controller
 #

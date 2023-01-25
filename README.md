@@ -17,9 +17,9 @@ They are written in [SmartPy](https://smartpy.io).
 
 ```
 # Store v2.0.0 
-Store = sp.io.import_script_from_url("https://tezid.infura-ipfs.io/ipfs/QmTTEnvDraWsqDr17utXw9KufeUE42JrdMxXcJSpcpc7tK")
+Store = sp.io.import_script_from_url("https://tezid.infura-ipfs.io/ipfs/QmYbSGKoJiDve7WTmU452wxGivwx1Q2R9iNyNw3gyYBGhu")
 # Controller v4.0.0 
-Controller = sp.io.import_script_from_url("https://tezid.infura-ipfs.io/ipfs/QmTPz7pC826X7KfcQudw5X92WkUBpi2kJ7QdYVqBjiPpGP")
+Controller = sp.io.import_script_from_url("https://tezid.infura-ipfs.io/ipfs/Qma7XGTEjczQcjpAcC3cgV8j7VEWgwp442DnnLn2UyhgZS")
 ```
 
 ## Init
